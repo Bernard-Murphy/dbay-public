@@ -1,0 +1,479 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: dBay Serverless Infrastructure
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        EVENT_BUS_NAME: !Ref DBayEventBus
+        REDIS_URL: !Ref RedisUrl
+        DOGECOIN_RPC_URL: !Ref DogecoinRpcUrl
+        ELASTICSEARCH_URL: !Ref ElasticsearchUrl
+        WALLET_SERVICE_URL: http://wallet-service:8003 # Internal DNS in VPC
+        AUCTION_SERVICE_URL: http://auction-service:8002
+        LISTING_SERVICE_URL: http://listing-service:8001
+        ORDER_SERVICE_URL: http://order-service:8005
+
+Parameters:
+  RedisUrl:
+    Type: String
+    Default: redis://redis-cluster:6379/0
+  DogecoinRpcUrl:
+    Type: String
+    Default: http://dogecoin-node:22555
+  ElasticsearchUrl:
+    Type: String
+    Default: http://opensearch:9200
+
+Resources:
+  DBayEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: dbay-events
+
+  # --- Functions ---
+
+  DepositWatcherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/deposit_watcher/
+      Handler: app.lambda_handler
+      Events:
+        Schedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 minute)
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt DBayEventBus.Arn
+
+  AuctionCloserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auction_closer/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          AUCTION_CLOSE_WORKFLOW_ARN: !Ref AuctionCloseStateMachine
+      Events:
+        Schedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 minute)
+      Policies:
+        - StepFunctionsExecutionPolicy:
+            StateMachineName: !GetAtt AuctionCloseStateMachine.Name
+
+  ImageProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/image_processor/
+      Handler: app.lambda_handler
+      # Event source should be S3, defined separately or inline if Bucket exists
+      # Assuming Bucket created via CloudFormation or manually
+
+  SearchIndexerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/search_indexer/
+      Handler: app.lambda_handler
+      Events:
+        ListingCreated:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref DBayEventBus
+            Pattern:
+              source:
+                - dbay.listing-service
+              detail-type:
+                - listing.created
+                - listing.updated
+                - listing.deleted
+
+  WebSocketHandlerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/websocket_handler/
+      Handler: app.lambda_handler
+
+  BroadcastUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/broadcast_update/
+      Handler: app.lambda_handler
+      Events:
+        BidPlaced:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref DBayEventBus
+            Pattern:
+              source:
+                - dbay.auction-service
+              detail-type:
+                - bid.placed
+                - bid.outbid
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: "arn:aws:execute-api:*:*:*/@connections/*"
+
+  BlockchainBroadcasterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/blockchain_broadcaster/
+      Handler: app.lambda_handler
+
+  # --- Step Functions ---
+
+  AuctionCloseStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachines/auction_close.asl.json
+      DefinitionSubstitutions:
+        VerifyAuctionEndedFunctionArn: !GetAtt VerifyAuctionEndedFunction.Arn
+        CreateOrderFunctionArn: !GetAtt CreateOrderFunction.Arn
+        LockEscrowFunctionArn: !GetAtt LockEscrowFunction.Arn
+        UpdateOrderPaidFunctionArn: !GetAtt UpdateOrderPaidFunction.Arn
+        NotifyUsersFunctionArn: !GetAtt NotifyUsersFunction.Arn
+        CheckDisputeFunctionArn: !GetAtt CheckDisputeFunction.Arn
+        ReleaseEscrowFunctionArn: !GetAtt ReleaseEscrowFunction.Arn
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref VerifyAuctionEndedFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CreateOrderFunction
+        # ... add policies for other functions
+
+  DepositConfirmationStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachines/deposit_confirmation.asl.json
+      DefinitionSubstitutions:
+        RecordPendingDepositFunctionArn: !GetAtt RecordPendingDepositFunction.Arn
+        CheckConfirmationsFunctionArn: !GetAtt CheckConfirmationsFunction.Arn
+        CreditUserFunctionArn: !GetAtt CreditUserFunction.Arn
+      Events:
+        DepositDetected:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref DBayEventBus
+            Pattern:
+              source:
+                - dbay.deposit-watcher
+              detail-type:
+                - deposit.detected
+
+  WithdrawalStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachines/withdrawal.asl.json
+      DefinitionSubstitutions:
+        ValidateBalanceFunctionArn: !GetAtt ValidateBalanceFunction.Arn
+        FraudCheckFunctionArn: !GetAtt FraudCheckFunction.Arn
+        DebitLedgerFunctionArn: !GetAtt DebitLedgerFunction.Arn
+        BuildAndSignTxFunctionArn: !GetAtt BuildAndSignTxFunction.Arn
+        BroadcastTxFunctionArn: !GetAtt BlockchainBroadcasterFunction.Arn
+        CheckConfirmationsFunctionArn: !GetAtt CheckConfirmationsFunction.Arn
+        FinalizeLedgerFunctionArn: !GetAtt FinalizeLedgerFunction.Arn
+
+  DisputeStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachines/dispute.asl.json
+      DefinitionSubstitutions:
+        FreezeEscrowFunctionArn: !GetAtt FreezeEscrowFunction.Arn
+        NotifyPartiesFunctionArn: !GetAtt NotifyPartiesFunction.Arn
+        CollectEvidenceFunctionArn: !GetAtt CollectEvidenceFunction.Arn
+        AdminReviewFunctionArn: !GetAtt AdminReviewFunction.Arn
+        RefundBuyerFunctionArn: !GetAtt RefundBuyerFunction.Arn
+        ReleaseToSellerFunctionArn: !GetAtt ReleaseEscrowFunction.Arn # Reusing ReleaseEscrow
+        UpdateOrderRefundedFunctionArn: !GetAtt UpdateOrderRefundedFunction.Arn
+        UpdateOrderCompletedFunctionArn: !GetAtt UpdateOrderCompletedFunction.Arn
+        NotifyResolutionFunctionArn: !GetAtt NotifyResolutionFunction.Arn
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref FreezeEscrowFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref NotifyPartiesFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CollectEvidenceFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AdminReviewFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref RefundBuyerFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReleaseEscrowFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref UpdateOrderRefundedFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref UpdateOrderCompletedFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref NotifyResolutionFunction
+
+  # --- Helper Lambdas for Step Functions (Stubs) ---
+  # These call the internal APIs of Microservices
+
+  FreezeEscrowFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            # Call Wallet Service to freeze?
+            # Actually Escrow IS frozen.
+            # Maybe update status to DISPUTED.
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  NotifyPartiesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            print("Notifying parties of dispute...")
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  CollectEvidenceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        import boto3, json
+        def lambda_handler(event, context):
+            # Send task token to API/DB
+            token = event['token']
+            order_id = event['order_id']
+            print(f"Waiting for evidence for order {order_id} with token {token}")
+            # Save token to DynamoDB/RDS for Order Service to retrieve when evidence submitted
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  AdminReviewFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            token = event['token']
+            print(f"Waiting for admin review with token {token}")
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  RefundBuyerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            # Call Wallet Service to refund
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  UpdateOrderRefundedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            # Call Order Service to update status
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  UpdateOrderCompletedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            # Call Order Service to update status
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  NotifyResolutionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            print("Notifying resolution...")
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  VerifyAuctionEndedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        import json, requests, os
+        def lambda_handler(event, context):
+            # Call Auction Service
+            url = os.environ['AUCTION_SERVICE_URL']
+            lid = event['listing_id']
+            resp = requests.post(f"{url}/api/v1/auction/auctions/{lid}/close")
+            if resp.status_code == 200:
+                return resp.json() # {winner_id, winning_bid}
+            return {} # No winner or error
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  CreateOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        import json, requests, os
+        def lambda_handler(event, context):
+            url = os.environ['ORDER_SERVICE_URL']
+            data = event
+            resp = requests.post(f"{url}/api/v1/order/orders/internal/create", json=data)
+            resp.raise_for_status()
+            return resp.json()
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  LockEscrowFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        import json, requests, os
+        def lambda_handler(event, context):
+            url = os.environ['WALLET_SERVICE_URL']
+            resp = requests.post(f"{url}/api/v1/wallet/internal/convert-to-escrow", json=event)
+            resp.raise_for_status()
+            return resp.json()
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  UpdateOrderPaidFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        import json, requests, os
+        def lambda_handler(event, context):
+            url = os.environ['ORDER_SERVICE_URL']
+            oid = event['order_id']
+            resp = requests.post(f"{url}/api/v1/order/orders/{oid}/mark-paid", json={})
+            resp.raise_for_status()
+            return resp.json()
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  NotifyUsersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            print("Notifying users...")
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  CheckDisputeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            return {"is_disputed": False}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  ReleaseEscrowFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        import json, requests, os
+        def lambda_handler(event, context):
+            url = os.environ['WALLET_SERVICE_URL']
+            resp = requests.post(f"{url}/api/v1/wallet/internal/release-escrow", json=event)
+            resp.raise_for_status()
+            return resp.json()
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  # Wallet/Withdrawal Stubs
+  RecordPendingDepositFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            # Call Wallet Service process_deposit?
+            # Actually WalletService.process_deposit credits immediately in current impl
+            # But workflow implies: Pending -> Wait -> Credit.
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  CheckConfirmationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        import requests, os
+        def lambda_handler(event, context):
+            # Call Doge Node
+            # For now return mock
+            return 7
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  CreditUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        import requests, os
+        def lambda_handler(event, context):
+            # Call Wallet Service to credit
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  ValidateBalanceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  FraudCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  DebitLedgerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  BuildAndSignTxFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            return "signed_tx_hex"
+      Handler: index.lambda_handler
+      Runtime: python3.12
+
+  FinalizeLedgerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      InlineCode: |
+        def lambda_handler(event, context):
+            return {}
+      Handler: index.lambda_handler
+      Runtime: python3.12

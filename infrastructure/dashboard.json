@@ -1,0 +1,47 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [
+            "AWS/Lambda",
+            "Invocations",
+            "FunctionName",
+            "DepositWatcherFunction"
+          ],
+          [".", "Errors", ".", "."]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Deposit Watcher Health"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [
+            "AWS/StepFunctions",
+            "ExecutionsStarted",
+            "StateMachineArn",
+            "${AuctionCloseStateMachine}"
+          ],
+          [".", "ExecutionsFailed", ".", "."]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "Auction Close Workflow"
+      }
+    }
+  ]
+}

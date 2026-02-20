@@ -1,0 +1,52 @@
+{
+  "Comment": "Deposit Confirmation Workflow",
+  "StartAt": "RecordPendingDeposit",
+  "States": {
+    "RecordPendingDeposit": {
+      "Type": "Task",
+      "Resource": "${RecordPendingDepositFunctionArn}",
+      "Parameters": {
+        "txid.$": "$.detail.txid",
+        "address.$": "$.detail.address",
+        "amount.$": "$.detail.amount",
+        "confirmations.$": "$.detail.confirmations"
+      },
+      "Next": "CheckConfirmations"
+    },
+    "CheckConfirmations": {
+      "Type": "Task",
+      "Resource": "${CheckConfirmationsFunctionArn}",
+      "Parameters": {
+        "txid.$": "$.detail.txid"
+      },
+      "ResultPath": "$.confirmations",
+      "Next": "IsConfirmed"
+    },
+    "IsConfirmed": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.confirmations",
+          "NumericGreaterThanEquals": 6,
+          "Next": "CreditUser"
+        }
+      ],
+      "Default": "Wait"
+    },
+    "Wait": {
+      "Type": "Wait",
+      "Seconds": 60,
+      "Next": "CheckConfirmations"
+    },
+    "CreditUser": {
+      "Type": "Task",
+      "Resource": "${CreditUserFunctionArn}",
+      "Parameters": {
+        "txid.$": "$.detail.txid",
+        "address.$": "$.detail.address",
+        "amount.$": "$.detail.amount"
+      },
+      "End": true
+    }
+  }
+}

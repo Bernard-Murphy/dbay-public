@@ -1,0 +1,89 @@
+{
+  "Comment": "Withdrawal Workflow",
+  "StartAt": "ValidateBalance",
+  "States": {
+    "ValidateBalance": {
+      "Type": "Task",
+      "Resource": "${ValidateBalanceFunctionArn}",
+      "Parameters": {
+        "user_id.$": "$.detail.user_id",
+        "amount.$": "$.detail.amount"
+      },
+      "Next": "FraudCheck"
+    },
+    "FraudCheck": {
+      "Type": "Task",
+      "Resource": "${FraudCheckFunctionArn}",
+      "Parameters": {
+        "user_id.$": "$.detail.user_id",
+        "amount.$": "$.detail.amount",
+        "address.$": "$.detail.address"
+      },
+      "Next": "DebitLedger"
+    },
+    "DebitLedger": {
+      "Type": "Task",
+      "Resource": "${DebitLedgerFunctionArn}",
+      "Parameters": {
+        "user_id.$": "$.detail.user_id",
+        "amount.$": "$.detail.amount",
+        "address.$": "$.detail.address",
+        "withdrawal_id.$": "$.detail.withdrawal_id"
+      },
+      "Next": "BuildAndSignTx"
+    },
+    "BuildAndSignTx": {
+      "Type": "Task",
+      "Resource": "${BuildAndSignTxFunctionArn}",
+      "Parameters": {
+        "amount.$": "$.detail.amount",
+        "address.$": "$.detail.address"
+      },
+      "ResultPath": "$.signed_tx",
+      "Next": "BroadcastTx"
+    },
+    "BroadcastTx": {
+      "Type": "Task",
+      "Resource": "${BroadcastTxFunctionArn}",
+      "Parameters": {
+        "signed_tx.$": "$.signed_tx"
+      },
+      "ResultPath": "$.txid",
+      "Next": "Wait"
+    },
+    "Wait": {
+      "Type": "Wait",
+      "Seconds": 60,
+      "Next": "CheckConfirmations"
+    },
+    "CheckConfirmations": {
+      "Type": "Task",
+      "Resource": "${CheckConfirmationsFunctionArn}",
+      "Parameters": {
+        "txid.$": "$.txid"
+      },
+      "ResultPath": "$.confirmations",
+      "Next": "IsConfirmed"
+    },
+    "IsConfirmed": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.confirmations",
+          "NumericGreaterThanEquals": 6,
+          "Next": "FinalizeLedger"
+        }
+      ],
+      "Default": "Wait"
+    },
+    "FinalizeLedger": {
+      "Type": "Task",
+      "Resource": "${FinalizeLedgerFunctionArn}",
+      "Parameters": {
+        "withdrawal_id.$": "$.detail.withdrawal_id",
+        "txid.$": "$.txid"
+      },
+      "End": true
+    }
+  }
+}

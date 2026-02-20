@@ -1,0 +1,110 @@
+{
+  "Comment": "Dispute Resolution Workflow",
+  "StartAt": "FreezeEscrow",
+  "States": {
+    "FreezeEscrow": {
+      "Type": "Task",
+      "Resource": "${FreezeEscrowFunctionArn}",
+      "Parameters": {
+        "order_id.$": "$.order_id"
+      },
+      "Next": "NotifyParties"
+    },
+    "NotifyParties": {
+      "Type": "Task",
+      "Resource": "${NotifyPartiesFunctionArn}",
+      "Parameters": {
+        "order_id.$": "$.order_id",
+        "message": "Dispute opened. Please provide evidence."
+      },
+      "Next": "CollectEvidence"
+    },
+    "CollectEvidence": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "Parameters": {
+        "FunctionName": "${CollectEvidenceFunctionArn}",
+        "Payload": {
+          "token.$": "$$.Task.Token",
+          "order_id.$": "$.order_id"
+        }
+      },
+      "Next": "AdminReview"
+    },
+    "AdminReview": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "Parameters": {
+        "FunctionName": "${AdminReviewFunctionArn}",
+        "Payload": {
+          "token.$": "$$.Task.Token",
+          "order_id.$": "$.order_id",
+          "evidence.$": "$.evidence"
+        }
+      },
+      "Next": "ResolveDispute"
+    },
+    "ResolveDispute": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.resolution",
+          "StringEquals": "REFUND",
+          "Next": "RefundBuyer"
+        },
+        {
+          "Variable": "$.resolution",
+          "StringEquals": "RELEASE",
+          "Next": "ReleaseToSeller"
+        }
+      ],
+      "Default": "ManualIntervention"
+    },
+    "RefundBuyer": {
+      "Type": "Task",
+      "Resource": "${RefundBuyerFunctionArn}",
+      "Parameters": {
+        "order_id.$": "$.order_id"
+      },
+      "Next": "UpdateOrderRefunded"
+    },
+    "ReleaseToSeller": {
+      "Type": "Task",
+      "Resource": "${ReleaseToSellerFunctionArn}", # This is essentially ReleaseEscrow
+      "Parameters": {
+        "order_id.$": "$.order_id"
+      },
+      "Next": "UpdateOrderCompleted"
+    },
+    "ManualIntervention": {
+      "Type": "Fail",
+      "Error": "ManualInterventionRequired",
+      "Cause": "Unknown resolution type"
+    },
+    "UpdateOrderRefunded": {
+      "Type": "Task",
+      "Resource": "${UpdateOrderRefundedFunctionArn}",
+      "Parameters": {
+        "order_id.$": "$.order_id"
+      },
+      "Next": "NotifyResolution"
+    },
+    "UpdateOrderCompleted": {
+      "Type": "Task",
+      "Resource": "${UpdateOrderCompletedFunctionArn}",
+      "Parameters": {
+        "order_id.$": "$.order_id"
+      },
+      "Next": "NotifyResolution"
+    },
+    "NotifyResolution": {
+      "Type": "Task",
+      "Resource": "${NotifyResolutionFunctionArn}",
+      "Parameters": {
+        "order_id.$": "$.order_id",
+        "resolution.$": "$.resolution"
+      },
+      "End": true
+    }
+  }
+}
