@@ -1,19 +1,15 @@
 import axios from "axios";
-import { useAuthStore } from "@/stores/auth";
+import { useAuthStore } from "@/stores/auth-store";
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "/api/v1",
-  headers: {
-    "Content-Type": "application/json",
-  },
+const baseURL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
+
+export const api = axios.create({
+  baseURL,
+  headers: { "Content-Type": "application/json" },
 });
 
 api.interceptors.request.use((config) => {
-  const authStore = useAuthStore();
-  if (authStore.token) {
-    config.headers.Authorization = `Bearer ${authStore.token}`;
-  }
+  const token = useAuthStore.getState().token;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
-
-export default api;

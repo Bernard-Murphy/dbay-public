@@ -2,32 +2,47 @@
   "name": "dbay-frontend",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
-    "format": "prettier --write src/"
+    "lint": "eslint . --ext .ts,.tsx --fix --ignore-path .gitignore"
   },
   "dependencies": {
-    "vue": "^3.4.15",
-    "vue-router": "^4.2.5",
-    "pinia": "^2.1.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.1.0",
     "axios": "^1.6.7",
     "date-fns": "^3.3.1",
-    "@headlessui/vue": "^1.7.17",
-    "@heroicons/vue": "^2.1.1",
+    "zustand": "^5.0.2",
+    "react-hook-form": "^7.54.2",
+    "@hookform/resolvers": "^3.9.1",
+    "zod": "^3.24.1",
     "tailwindcss": "^3.4.1",
     "autoprefixer": "^10.4.17",
-    "postcss": "^8.4.33"
+    "postcss": "^8.4.33",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0",
+    "lucide-react": "^0.468.0",
+    "@radix-ui/react-dialog": "^1.1.4",
+    "@radix-ui/react-dropdown-menu": "^2.1.4",
+    "@radix-ui/react-tabs": "^1.1.2",
+    "@radix-ui/react-label": "^2.1.1",
+    "@radix-ui/react-slot": "^1.1.1",
+    "@radix-ui/react-collapsible": "^1.1.2",
+    "@radix-ui/react-select": "^2.1.4"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.3",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
-    "vue-tsc": "^1.8.27",
     "eslint": "^8.56.0",
-    "eslint-plugin-vue": "^9.21.1",
-    "prettier": "^3.2.5"
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint-plugin-react-hooks": "^5.0.0"
   }
 }

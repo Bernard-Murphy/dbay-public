@@ -1,68 +1,46 @@
 # Local Development Setup
 
+This guide walks you through setting up dBay for local development: backend services (Docker), databases, migrations, seed data, and the React frontend.
+
 ## Prerequisites
 
-- Docker & Docker Compose
-- Node.js 18+ (for frontend development outside Docker)
-- Python 3.12+ (for running tests outside Docker)
+- **Docker & Docker Compose** – for running PostgreSQL, Redis, MongoDB, Elasticsearch, and all microservices
+- **Node.js 18+** – for the React frontend (run locally or in Docker)
+- **Python 3.12+** – optional, for running Django management commands or tests on the host
 
-## Quick Start
+## 1. Clone and enter the repo
 
 ```bash
-# Clone the repository
 git clone https://github.com/your-org/dbay.git
 cd dbay
+```
 
-# Start all services
+## 2. Start backend and infrastructure
+
+From the repo root:
+
+```bash
 docker-compose up -d --build
+```
 
-# Watch logs
+This starts:
+
+- **Databases:** PostgreSQL (port 5439), MongoDB (27019), Redis (6379), Memcached (11211), Elasticsearch (9200)
+- **Infrastructure:** LocalStack (4566), mock Dogecoin RPC (18332)
+- **Microservices:** listing (8001), auction (8002), wallet (8003), user (8004), order (8005), notification (8010), search-gateway (8011), messaging (8012)
+- **Frontend (in Docker):** optional; see step 5 for running the frontend on the host instead
+
+Wait until containers are healthy. Check logs if needed:
+
+```bash
 docker-compose logs -f
 ```
 
-## Service URLs
+## 3. Run database migrations
 
-| Service              | URL                           | Description       |
-| -------------------- | ----------------------------- | ----------------- |
-| Frontend             | http://localhost:3000         | Vue.js SPA        |
-| Listing Service      | http://localhost:8001/api/v1/ | Django REST       |
-| Auction Service      | http://localhost:8002/api/v1/ | Django REST       |
-| Wallet Service       | http://localhost:8003/api/v1/ | Django REST       |
-| User Service         | http://localhost:8004/api/v1/ | Django REST       |
-| Order Service        | http://localhost:8005/api/v1/ | Django REST       |
-| Notification Service | http://localhost:8010/        | Flask             |
-| Search Gateway       | http://localhost:8011/api/v1/ | Flask             |
-| Messaging Service    | http://localhost:8012/api/v1/ | Flask             |
-| LocalStack           | http://localhost:4566         | AWS services mock |
-| Dogecoin RPC Mock    | http://localhost:18332        | Mock blockchain   |
-
-## Infrastructure Services
-
-| Service       | Port  | Purpose                |
-| ------------- | ----- | ---------------------- |
-| PostgreSQL    | 5432  | Primary database       |
-| MongoDB       | 27017 | Documents, messages    |
-| Elasticsearch | 9200  | Search index           |
-| Redis         | 6379  | Cache, locks, sessions |
-| Memcached     | 11211 | Warm cache             |
-
-## Database Access
+Run migrations for each Django service so tables exist:
 
 ```bash
-# PostgreSQL
-docker exec -it dbay-postgres psql -U dbay -d dbay
-
-# MongoDB
-docker exec -it dbay-mongo mongosh
-
-# Redis
-docker exec -it dbay-redis redis-cli
-```
-
-## Running Migrations
-
-```bash
-# All Django services
 docker-compose exec listing-service python manage.py migrate
 docker-compose exec auction-service python manage.py migrate
 docker-compose exec wallet-service python manage.py migrate
@@ -70,7 +48,96 @@ docker-compose exec user-service python manage.py migrate
 docker-compose exec order-service python manage.py migrate
 ```
 
-## Running Tests
+If you see errors about missing migrations, generate them first from the service directory (e.g. `listing-service`) with `python manage.py makemigrations`, then run `migrate` again.
+
+## 4. Seed categories and sample listings
+
+Populate categories, category items, and sample listings so the home page and search have data:
+
+```bash
+docker-compose exec listing-service python manage.py seed_data
+```
+
+Alternatively, from repo root (with Python and Django deps available):
+
+```bash
+python scripts/seed_data.py
+```
+
+## 5. Set up and run the frontend
+
+The frontend is a React 18 app (Vite, TypeScript, Tailwind, shadcn/ui). You can run it on the host or use the Dockerized dev server.
+
+### Option A: Run frontend on the host (recommended for development)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Then open **http://localhost:3000**. Vite will proxy API requests to the correct backend ports (see `frontend/vite.config.ts`).
+
+### Option B: Run frontend in Docker
+
+If the `frontend` service is defined in `docker-compose.yaml`:
+
+```bash
+docker-compose up -d frontend
+```
+
+Then open **http://localhost:3000**. Ensure `VITE_API_BASE_URL` or the proxy config in the frontend matches how the browser will reach the backends (e.g. via host ports when using Docker).
+
+## 6. Verify the setup
+
+- **Frontend:** http://localhost:3000 – home page with search and category grid; login/register (auth dialog).
+- **Listing API:** http://localhost:8001/api/v1/listings/listings/
+- **Categories with items:** http://localhost:8001/api/v1/categories/with-items/
+
+---
+
+## Service URLs reference
+
+| Service           | URL                           | Description       |
+| ----------------- | ----------------------------- | ----------------- |
+| Frontend          | http://localhost:3000         | React SPA (Vite)  |
+| Listing Service   | http://localhost:8001/api/v1/ | Django REST       |
+| Auction Service   | http://localhost:8002/api/v1/ | Django REST       |
+| Wallet Service    | http://localhost:8003/api/v1/ | Django REST       |
+| User Service      | http://localhost:8004/api/v1/ | Django REST       |
+| Order Service     | http://localhost:8005/api/v1/ | Django REST       |
+| Notification      | http://localhost:8010/        | Flask             |
+| Search Gateway    | http://localhost:8011/api/v1/ | Flask             |
+| Messaging         | http://localhost:8012/api/v1/ | Flask             |
+| LocalStack        | http://localhost:4566         | AWS services mock |
+| Dogecoin RPC mock | http://localhost:18332        | Mock blockchain   |
+
+## Infrastructure (ports on host)
+
+| Service       | Port  | Purpose                |
+| ------------- | ----- | ---------------------- |
+| PostgreSQL    | 5439  | Primary database       |
+| MongoDB       | 27019 | Documents, messages    |
+| Elasticsearch | 9200  | Search index           |
+| Redis         | 6379  | Cache, locks, sessions |
+| Memcached     | 11211 | Warm cache             |
+
+## Database access
+
+Use the **service names** from `docker-compose` (not container IDs):
+
+```bash
+# PostgreSQL (user: dbay_user, db: dbay)
+docker-compose exec postgres psql -U dbay_user -d dbay
+
+# MongoDB
+docker-compose exec mongodb mongosh
+
+# Redis
+docker-compose exec redis redis-cli
+```
+
+## Running tests
 
 ```bash
 # Django service tests
@@ -79,63 +146,59 @@ docker-compose exec listing-service pytest
 # Flask service tests
 docker-compose exec search-gateway pytest
 
-# Frontend tests
+# Frontend (when test script exists)
 cd frontend && npm test
 ```
 
-## Hot Reloading
+## Hot reloading
 
-All services are configured with volume mounts for hot reloading:
+- **Django/Flask:** Volume mounts allow code changes to be picked up (restart or use your dev server’s reload).
+- **React frontend:** Vite HMR is enabled when running `npm run dev` on the host.
 
-- Django services reload on Python file changes
-- Flask services reload on Python file changes
-- Vue.js frontend has Vite HMR enabled
+## Environment variables
 
-## Environment Variables
+Key variables are set in `docker-compose.yaml` for each service, for example:
 
-Key environment variables are set in `docker-compose.yaml`:
-
-```yaml
-DJANGO_DEBUG: "True"
-DATABASE_URL: postgres://dbay:dbay@postgres:5432/dbay
-REDIS_URL: redis://redis:6379/0
-MONGO_URI: mongodb://mongo:27017/dbay
-ELASTICSEARCH_URL: http://elasticsearch:9200
-AWS_ENDPOINT_URL: http://localstack:4566
-```
+- `DATABASE_URL` – PostgreSQL URL for Django services
+- `REDIS_URL`, `MONGO_URI`, `ELASTICSEARCH_URL`, `AWS_ENDPOINT_URL` for caches and external services
+- Frontend: `VITE_API_BASE_URL` (optional; Vite proxy is used when running locally)
 
 ## Troubleshooting
 
-### Service won't start
+### Service won’t start
 
 ```bash
-# Check logs
 docker-compose logs <service-name>
-
-# Restart service
 docker-compose restart <service-name>
 ```
 
-### Database connection issues
+### Database connection errors
 
 ```bash
-# Verify PostgreSQL is ready
-docker-compose exec postgres pg_isready
+# Check PostgreSQL is ready
+docker-compose exec postgres pg_isready -U dbay_user -d dbay
 
-# Check service can reach database
-docker-compose exec listing-service python -c "import django; django.setup(); from django.db import connection; cursor = connection.cursor()"
+# Test from a Django service
+docker-compose exec listing-service python -c "
+import django; django.setup()
+from django.db import connection; connection.ensure_connection(); print('OK')
+"
 ```
 
-### Clear all data
+### Frontend can’t reach the API
+
+- Ensure backends are up: `docker-compose ps`
+- When running the frontend on the host, use `npm run dev` so Vite’s proxy is active (see `frontend/vite.config.ts`).
+- If you use the Dockerized frontend, ensure it can reach the other services by host name/port as configured in the proxy.
+
+### Clear all data and start over
 
 ```bash
-# Stop and remove containers + volumes
 docker-compose down -v
-
-# Start fresh
 docker-compose up -d --build
+# Then run migrations and seed again (steps 3 and 4)
 ```
 
-### Port conflicts
+### Port already in use
 
-If a port is already in use, edit `docker-compose.yaml` to change the host port mapping.
+Change the host port in `docker-compose.yaml` for the service that fails (e.g. `"3001:3000"` for the frontend if 3000 is taken).
