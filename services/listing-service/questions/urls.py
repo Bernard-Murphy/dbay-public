@@ -1,9 +1,15 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-
-router = DefaultRouter()
-# router.register(r'', QuestionViewSet)
+from django.urls import path
+from .views import ListingQuestionViewSet, ListingAnswerViewSet
 
 urlpatterns = [
-    # path('', include(router.urls)),
+    path(
+        "listings/<uuid:listing_id>/questions/",
+        ListingQuestionViewSet.as_view({"get": "list", "post": "create"}),
+        name="listing-questions",
+    ),
+    path(
+        "questions/<uuid:question_id>/answers/",
+        ListingAnswerViewSet.as_view({"get": "list", "post": "create"}),
+        name="question-answers",
+    ),
 ]

@@ -17,7 +17,8 @@ WALLET_SERVICE_URL = os.environ.get('WALLET_SERVICE_URL', 'http://wallet-service
 
 class AuctionService:
     def place_bid(self, listing_id, bidder_id, amount, max_auto_bid=None):
-        amount = Decimal(amount)
+        # DOGE must be whole numbers
+        amount = Decimal(int(round(float(amount))))
         if max_auto_bid:
             max_auto_bid = Decimal(max_auto_bid)
 

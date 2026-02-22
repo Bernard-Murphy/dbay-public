@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Moon, Sun, LogIn, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,27 +12,54 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuthStore } from "@/stores/auth-store";
 import { useTheme } from "@/components/theme/theme-provider";
 import { AuthDialog } from "@/components/auth/auth-dialog";
+import dogeLogo from "@/assets/dogecoin-logo.png";
+
 
 export function Navbar() {
+  const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const [authOpen, setAuthOpen] = useState(false);
+  const [pendingCreateListing, setPendingCreateListing] = useState(false);
+
+  const handleCreateListingClick = () => {
+    if (isAuthenticated) {
+      navigate("/listings/create");
+    } else {
+      setPendingCreateListing(true);
+      setAuthOpen(true);
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    if (pendingCreateListing) {
+      setPendingCreateListing(false);
+      navigate("/listings/create");
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center justify-between px-4">
+      <div className="container flex h-14 items-center justify-between px-4 mx-auto">
         <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
-              d
-            </div>
-            <span className="font-semibold">dBay</span>
-          </Link>
-          <Link to="/listings/create">
-            <Button variant="ghost" size="sm" className="gap-2">
+          <Button asChild variant="ghost">
+            <Link to="/" className="flex items-center gap-2">
+              <img src={dogeLogo} alt="Dogecoin Logo" className="h-8 w-8" />
+            </Link>
+          </Button>
+          {isAuthenticated ? (
+            <Link to="/listings/create">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <PlusCircle className="h-4 w-4" />
+                Create Listing
+              </Button>
+            </Link>
+          ) : (
+            <Button variant="ghost" size="sm" className="gap-2" onClick={handleCreateListingClick}>
               <PlusCircle className="h-4 w-4" />
               Create Listing
             </Button>
-          </Link>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -47,8 +75,8 @@ export function Navbar() {
 
           {isAuthenticated && user ? (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+              <DropdownMenuTrigger asChild className="static">
+                <Button variant="ghost" className="h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       {(user.username || user.displayName || "U").charAt(0).toUpperCase()}
@@ -58,13 +86,13 @@ export function Navbar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem asChild>
-                  <Link to="/profile">Profile</Link>
+                  <Link to="/dashboard?tab=profile">Profile</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/wallet">Wallet</Link>
+                  <Link to="/dashboard?tab=wallet">Wallet</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/orders">Orders</Link>
+                  <Link to="/dashboard?tab=orders">Orders</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => logout()}>
                   Log out
@@ -73,6 +101,12 @@ export function Navbar() {
             </DropdownMenu>
           ) : (
             <AuthDialog
+              open={authOpen}
+              onOpenChange={(open) => {
+                setAuthOpen(open);
+                if (!open) setPendingCreateListing(false);
+              }}
+              onSuccess={handleAuthSuccess}
               trigger={
                 <Button variant="default" size="sm" className="gap-2">
                   <LogIn className="h-4 w-4" />

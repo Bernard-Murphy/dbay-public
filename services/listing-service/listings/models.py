@@ -61,9 +61,15 @@ class Listing(models.Model):
         return self.title
 
 class ListingImage(models.Model):
+    MEDIA_TYPE_IMAGE = 'image'
+    MEDIA_TYPE_VIDEO = 'video'
+    MEDIA_TYPE_CHOICES = [(MEDIA_TYPE_IMAGE, 'Image'), (MEDIA_TYPE_VIDEO, 'Video')]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='images')
     s3_key = models.CharField(max_length=1024)
+    media_type = models.CharField(max_length=10, choices=MEDIA_TYPE_CHOICES, default=MEDIA_TYPE_IMAGE)
+    file_size = models.BigIntegerField(null=True, blank=True)  # bytes
     url_thumb = models.URLField(blank=True, null=True)
     url_medium = models.URLField(blank=True, null=True)
     url_large = models.URLField(blank=True, null=True)
@@ -72,6 +78,10 @@ class ListingImage(models.Model):
 
     class Meta:
         ordering = ['sort_order']
+
+    @staticmethod
+    def max_video_size_bytes():
+        return 100 * 1024 * 1024  # 100MB
 
 class Watchlist(models.Model):
     user_id = models.UUIDField()

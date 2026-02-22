@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "@/services/api";
 
 export function useQuery<T>(url: string, options?: { fallback?: T }) {
   const [data, setData] = useState<T | undefined>(options?.fallback as T);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   const refetch = useCallback(async () => {
     setLoading(true);
@@ -14,11 +16,12 @@ export function useQuery<T>(url: string, options?: { fallback?: T }) {
       setData(res.data);
     } catch (e) {
       setError(e instanceof Error ? e : new Error("Failed to fetch"));
-      if (options?.fallback !== undefined) setData(options.fallback as T);
+      const fallback = optionsRef.current?.fallback;
+      if (fallback !== undefined) setData(fallback as T);
     } finally {
       setLoading(false);
     }
-  }, [url, options?.fallback]);
+  }, [url]);
 
   useEffect(() => {
     refetch();

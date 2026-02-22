@@ -19,15 +19,18 @@ class SearchService:
     def search(self, query_params):
         """
         Build and execute ES query based on params:
-        q, category, price_min, price_max, sort, from, size
+        q, category_id, listing_type, price_min, price_max, sort, page, per_page (or from, size)
         """
         q = query_params.get('q')
         category_id = query_params.get('category_id')
+        listing_type = query_params.get('listing_type')
         price_min = query_params.get('price_min')
         price_max = query_params.get('price_max')
         sort = query_params.get('sort', 'created_at:desc')
-        from_ = int(query_params.get('from', 0))
-        size = int(query_params.get('size', 20))
+        page = int(query_params.get('page', 1))
+        per_page = int(query_params.get('per_page', 20))
+        from_ = (page - 1) * per_page
+        size = per_page
 
         must = []
         if q:
@@ -45,6 +48,8 @@ class SearchService:
         
         if category_id:
             filter_.append({"term": {"category_id": category_id}})
+        if listing_type:
+            filter_.append({"term": {"listing_type": listing_type}})
             
         if price_min or price_max:
             range_query = {"current_price": {}}
@@ -79,7 +84,26 @@ class SearchService:
             }
         }
 
-        return self.es.search(index=self.index_name, body=body)
+        raw = self.es.search(index=self.index_name, body=body)
+        # Normalize for frontend: results, total, page, per_page
+        hits = raw.get("hits", {})
+        hit_list = hits.get("hits", [])
+        total_obj = hits.get("total", 0)
+        total = total_obj.get("value", total_obj) if isinstance(total_obj, dict) else total_obj
+        results = []
+        for h in hit_list:
+            src = h.get("_source", {})
+            # Map listing_id -> id for frontend Listing type
+            row = dict(src)
+            if "listing_id" in row and "id" not in row:
+                row["id"] = row["listing_id"]
+            results.append(row)
+        return {
+            "results": results,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+        }
 
     def save_search(self, user_id, name, query_params):
         doc = {

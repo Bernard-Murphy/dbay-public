@@ -28,10 +28,12 @@ def lambda_handler(event, context):
                 'title': detail.get('title'),
                 'description': detail.get('description'),
                 'category_id': detail.get('category_id'),
+                'listing_type': detail.get('listing_type'),
                 'current_price': float(detail.get('current_price', 0)),
                 'status': detail.get('status'),
                 'created_at': detail.get('created_at'),
-                # Add other fields as needed
+                'end_time': detail.get('end_time'),
+                'images': detail.get('images', []),
             }
             
             es.index(index=INDEX_NAME, id=listing_id, document=doc)

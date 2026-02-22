@@ -1,8 +1,8 @@
-# dBay - Dogecoin-Powered Marketplace Platform
+# DBay - Dogecoin-Powered Marketplace Platform
 
 ## Overview
 
-dBay is a full-featured online auction and marketplace platform where all transactions use Dogecoin cryptocurrency. The platform uses a custodial HD wallet with per-user deposit addresses. Internal payments (bids, purchases, fees) are ledger transfers in the database - only deposits and withdrawals touch the Dogecoin blockchain.
+DBay is a full-featured online auction and marketplace platform where all transactions use Dogecoin cryptocurrency. The platform uses a custodial HD wallet with per-user deposit addresses. Internal payments (bids, purchases, fees) are ledger transfers in the database - only deposits and withdrawals touch the Dogecoin blockchain.
 
 ## Architecture
 

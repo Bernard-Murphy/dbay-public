@@ -7,10 +7,16 @@ import django_ltree.fields
 class Migration(migrations.Migration):
 
     initial = True
+    atomic = False  # CREATE EXTENSION cannot run inside a transaction
 
     dependencies = []
 
     operations = [
+        # Enable PostgreSQL ltree extension required by PathField
+        migrations.RunSQL(
+            "CREATE EXTENSION IF NOT EXISTS ltree;",
+            reverse_sql="DROP EXTENSION IF EXISTS ltree;",
+        ),
         migrations.CreateModel(
             name="Category",
             fields=[

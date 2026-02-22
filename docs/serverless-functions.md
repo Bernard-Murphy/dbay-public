@@ -2,7 +2,7 @@
 
 ## Overview
 
-dBay uses AWS Lambda functions for event-driven processing, scheduled tasks, and Step Functions workflow steps. All functions are defined in `serverless/template.yaml` using AWS SAM.
+DBay uses AWS Lambda functions for event-driven processing, scheduled tasks, and Step Functions workflow steps. All functions are defined in `serverless/template.yaml` using AWS SAM.
 
 ## Functions
 

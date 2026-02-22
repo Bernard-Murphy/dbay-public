@@ -1,6 +1,6 @@
 # Local Development Setup
 
-This guide walks you through setting up dBay for local development: backend services (Docker), databases, migrations, seed data, and the React frontend.
+This guide walks you through setting up DBay for local development: backend services (Docker), databases, migrations, seed data, and the React frontend.
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ This guide walks you through setting up dBay for local development: backend serv
 ## 1. Clone and enter the repo
 
 ```bash
-git clone https://github.com/your-org/dbay.git
+git clone https://github.com/bernard-murphy/dbay.git
 cd dbay
 ```
 
@@ -20,7 +20,7 @@ cd dbay
 From the repo root:
 
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 This starts:
@@ -33,29 +33,37 @@ This starts:
 Wait until containers are healthy. Check logs if needed:
 
 ```bash
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ## 3. Run database migrations
 
+Generate migrations first from the service directory (e.g. `listing-service`) with `python manage.py makemigrations`:
+
+```bash
+docker compose exec listing-service python manage.py makemigrations
+docker compose exec auction-service python manage.py makemigrations
+docker compose exec wallet-service python manage.py makemigrations
+docker compose exec user-service python manage.py makemigrations
+docker compose exec order-service python manage.py makemigrations
+```
+
 Run migrations for each Django service so tables exist:
 
 ```bash
-docker-compose exec listing-service python manage.py migrate
-docker-compose exec auction-service python manage.py migrate
-docker-compose exec wallet-service python manage.py migrate
-docker-compose exec user-service python manage.py migrate
-docker-compose exec order-service python manage.py migrate
+docker compose exec listing-service python manage.py migrate
+docker compose exec auction-service python manage.py migrate
+docker compose exec wallet-service python manage.py migrate
+docker compose exec user-service python manage.py migrate
+docker compose exec order-service python manage.py migrate
 ```
-
-If you see errors about missing migrations, generate them first from the service directory (e.g. `listing-service`) with `python manage.py makemigrations`, then run `migrate` again.
 
 ## 4. Seed categories and sample listings
 
 Populate categories, category items, and sample listings so the home page and search have data:
 
 ```bash
-docker-compose exec listing-service python manage.py seed_data
+docker compose exec listing-service python manage.py seed_data
 ```
 
 Alternatively, from repo root (with Python and Django deps available):
@@ -80,10 +88,10 @@ Then open **http://localhost:3000**. Vite will proxy API requests to the correct
 
 ### Option B: Run frontend in Docker
 
-If the `frontend` service is defined in `docker-compose.yaml`:
+If the `frontend` service is defined in `docker compose.yaml`:
 
 ```bash
-docker-compose up -d frontend
+docker compose up -d frontend
 ```
 
 Then open **http://localhost:3000**. Ensure `VITE_API_BASE_URL` or the proxy config in the frontend matches how the browser will reach the backends (e.g. via host ports when using Docker).
@@ -124,27 +132,27 @@ Then open **http://localhost:3000**. Ensure `VITE_API_BASE_URL` or the proxy con
 
 ## Database access
 
-Use the **service names** from `docker-compose` (not container IDs):
+Use the **service names** from `docker compose` (not container IDs):
 
 ```bash
 # PostgreSQL (user: dbay_user, db: dbay)
-docker-compose exec postgres psql -U dbay_user -d dbay
+docker compose exec postgres psql -U dbay_user -d dbay
 
 # MongoDB
-docker-compose exec mongodb mongosh
+docker compose exec mongodb mongosh
 
 # Redis
-docker-compose exec redis redis-cli
+docker compose exec redis redis-cli
 ```
 
 ## Running tests
 
 ```bash
 # Django service tests
-docker-compose exec listing-service pytest
+docker compose exec listing-service pytest
 
 # Flask service tests
-docker-compose exec search-gateway pytest
+docker compose exec search-gateway pytest
 
 # Frontend (when test script exists)
 cd frontend && npm test
@@ -157,7 +165,7 @@ cd frontend && npm test
 
 ## Environment variables
 
-Key variables are set in `docker-compose.yaml` for each service, for example:
+Key variables are set in `docker compose.yaml` for each service, for example:
 
 - `DATABASE_URL` – PostgreSQL URL for Django services
 - `REDIS_URL`, `MONGO_URI`, `ELASTICSEARCH_URL`, `AWS_ENDPOINT_URL` for caches and external services
@@ -168,18 +176,18 @@ Key variables are set in `docker-compose.yaml` for each service, for example:
 ### Service won’t start
 
 ```bash
-docker-compose logs <service-name>
-docker-compose restart <service-name>
+docker compose logs <service-name>
+docker compose restart <service-name>
 ```
 
 ### Database connection errors
 
 ```bash
 # Check PostgreSQL is ready
-docker-compose exec postgres pg_isready -U dbay_user -d dbay
+docker compose exec postgres pg_isready -U dbay_user -d dbay
 
 # Test from a Django service
-docker-compose exec listing-service python -c "
+docker compose exec listing-service python -c "
 import django; django.setup()
 from django.db import connection; connection.ensure_connection(); print('OK')
 "
@@ -187,18 +195,36 @@ from django.db import connection; connection.ensure_connection(); print('OK')
 
 ### Frontend can’t reach the API
 
-- Ensure backends are up: `docker-compose ps`
+- Ensure backends are up: `docker compose ps`
 - When running the frontend on the host, use `npm run dev` so Vite’s proxy is active (see `frontend/vite.config.ts`).
 - If you use the Dockerized frontend, ensure it can reach the other services by host name/port as configured in the proxy.
 
 ### Clear all data and start over
 
 ```bash
-docker-compose down -v
-docker-compose up -d --build
+docker compose down -v
+docker compose up -d --build
 # Then run migrations and seed again (steps 3 and 4)
 ```
 
+### "No migrations to apply" but seed fails with "relation does not exist"
+
+This usually means either (1) the scripts were run from a directory other than the repo root so `docker compose` used the wrong project, or (2) the service images are stale and don’t include the migration files. Fix it by:
+
+1. **Using the scripts from repo root** (or run the script by path; it will `cd` to the repo root for you):
+   ```bash
+   cd /path/to/dbay
+   ./migrate.sh
+   ```
+2. **Rebuilding images and re-running migrations** so containers have the latest code and migrations:
+   ```bash
+   docker compose build listing-service auction-service wallet-service user-service order-service
+   docker compose up -d
+   ./migrate.sh
+   docker compose exec listing-service python manage.py seed_data
+   ```
+   If the database is in a bad state, reset it and start over (see "Clear all data and start over" above).
+
 ### Port already in use
 
-Change the host port in `docker-compose.yaml` for the service that fails (e.g. `"3001:3000"` for the frontend if 3000 is taken).
+Change the host port in `docker compose.yaml` for the service that fails (e.g. `"3001:3000"` for the frontend if 3000 is taken).

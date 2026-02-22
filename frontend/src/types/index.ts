@@ -4,6 +4,7 @@ export interface Category {
   slug: string;
   path: string;
   icon_url?: string;
+  default_icon?: string;
   children?: Category[];
   items?: CategoryItem[];
 }
@@ -12,14 +13,16 @@ export interface CategoryItem {
   id: number;
   name: string;
   sort_order: number;
+  image_url?: string | null;
   category?: number;
 }
 
 export interface ListingImage {
   id: string;
-  url_thumb: string;
-  url_medium: string;
-  url_large: string;
+  media_type?: "image" | "video";
+  url_thumb?: string | null;
+  url_medium?: string | null;
+  url_large?: string | null;
   sort_order: number;
 }
 

@@ -10,7 +10,7 @@
     --card-foreground: lab(2.75381% 0 0);
     --popover: lab(100% 0 0);
     --popover-foreground: lab(2.75381% 0 0);
-    --primary: lab(7.78201% -0.0000149012 0);
+    --primary: lab(55.793 0.629 46.346);
     --primary-foreground: lab(98.26% 0 0);
     --secondary: lab(96.52% -0.0000298023 0.0000119209);
     --secondary-foreground: lab(7.78201% -0.0000149012 0);
@@ -45,8 +45,8 @@
     --card-foreground: lab(98.26% 0 0);
     --popover: lab(7.78201% -0.0000149012 0);
     --popover-foreground: lab(98.26% 0 0);
-    --primary: lab(90.952% 0 -0.0000119209);
-    --primary-foreground: lab(7.78201% -0.0000149012 0);
+    --primary: lab(55.793 0.629 46.346);
+    --primary-foreground: lab(98.26% 0 0);
     --secondary: lab(15.204% 0 -0.00000596046);
     --secondary-foreground: lab(98.26% 0 0);
     --muted: lab(15.204% 0 -0.00000596046);
@@ -79,10 +79,34 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: "Comic Sans MS", cursive;
   }
 
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+}
+
+.ripple {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%) scale(0);
+  animation: ripple-animation 0.3s ease-out forwards;
+  pointer-events: none;
+  opacity: 1;
+}
+
+@keyframes ripple-animation {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(4);
+    opacity: 0;
   }
 }

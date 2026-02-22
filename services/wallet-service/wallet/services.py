@@ -70,7 +70,8 @@ class WalletService:
     @transaction.atomic
     def request_withdrawal(self, user_id, amount, address):
         wallet = WalletBalance.objects.select_for_update().get(user_id=user_id)
-        amount = Decimal(amount)
+        # DOGE must be whole numbers
+        amount = Decimal(int(round(float(amount))))
         fee = Decimal('1.0')
         total_deduction = amount + fee
         

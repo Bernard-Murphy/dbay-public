@@ -1,10 +1,37 @@
+import uuid
 from rest_framework import viewsets, mixins, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.shortcuts import get_object_or_404
 from .models import User, UserAddress
 from .serializers import UserSerializer, UserAddressSerializer
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_view(request):
+    """Create a new user. Expects username, email, display_name, password (ignored), bio (ignored), avatar_url (optional)."""
+    username = request.data.get('username')
+    email = request.data.get('email')
+    display_name = request.data.get('display_name') or username
+    avatar_url = request.data.get('avatar_url') or None
+    if not username or not email:
+        return Response({"error": "username and email required"}, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.filter(username=username).exists():
+        return Response({"error": "Username already taken"}, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.filter(email=email).exists():
+        return Response({"error": "Email already registered"}, status=status.HTTP_400_BAD_REQUEST)
+    cognito_sub = f"reg-{uuid.uuid4().hex}"
+    user = User.objects.create(
+        username=username,
+        email=email,
+        display_name=display_name,
+        avatar_url=avatar_url,
+        cognito_sub=cognito_sub,
+    )
+    serializer = UserSerializer(user)
+    return Response({"user": serializer.data, "token": "demo-token"}, status=status.HTTP_201_CREATED)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()

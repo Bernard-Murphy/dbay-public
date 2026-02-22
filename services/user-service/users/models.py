@@ -6,6 +6,7 @@ class User(models.Model):
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=150, unique=True)
     display_name = models.CharField(max_length=150, blank=True)
+    avatar_url = models.URLField(blank=True, null=True)
     cognito_sub = models.CharField(max_length=255, unique=True)
     seller_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

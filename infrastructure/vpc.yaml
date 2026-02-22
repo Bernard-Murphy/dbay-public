@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: dBay VPC Infrastructure
+Description: DBay VPC Infrastructure
 
 Resources:
   VPC:

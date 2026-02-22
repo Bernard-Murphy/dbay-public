@@ -1,21 +1,11 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
-import { api } from "@/services/api";
 import { useQuery } from "@/hooks/use-query";
+import { CategoryIcon } from "@/components/category-icon";
+import { SearchBar } from "@/components/search-bar";
 import type { Category } from "@/types";
 
 export function HomePage() {
   const navigate = useNavigate();
-  const [q, setQ] = useState("");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [categoryId, setCategoryId] = useState<string>("");
-  const [listingType, setListingType] = useState<string>("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
 
   const { data: categoriesData } = useQuery<{ results?: Category[] }>(
     "categories/with-items/",
@@ -23,88 +13,35 @@ export function HomePage() {
   );
   const categories = (Array.isArray(categoriesData) ? categoriesData : categoriesData?.results ?? []) as (Category & { items?: { id: number; name: string }[] })[];
 
-  const handleSearch = () => {
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    if (categoryId) params.set("category", categoryId);
-    if (listingType) params.set("listing_type", listingType);
-    if (dateFrom) params.set("date_from", dateFrom);
-    if (dateTo) params.set("date_to", dateTo);
-    navigate(`/search?${params.toString()}`);
+  const handleSearch = (params: {
+    q: string;
+    category: string;
+    listing_type: string;
+    date_from: string;
+    date_to: string;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params.q) searchParams.set("q", params.q);
+    if (params.category) searchParams.set("category", params.category);
+    if (params.listing_type) searchParams.set("listing_type", params.listing_type);
+    if (params.date_from) searchParams.set("date_from", params.date_from);
+    if (params.date_to) searchParams.set("date_to", params.date_to);
+    searchParams.set("page", "1");
+    navigate(`/search?${searchParams.toString()}`);
   };
 
   const handleCategoryItemClick = (categoryId: number, itemName: string) => {
-    navigate(`/search?q=${encodeURIComponent(itemName)}&category=${categoryId}`);
+    navigate(`/search?q=${encodeURIComponent(itemName)}&category=${categoryId}&page=1`);
   };
 
   return (
     <div className="container max-w-6xl mx-auto px-4 py-8">
       <div className="space-y-4">
-        <div className="flex gap-2">
-          <Input
-            placeholder="Search listings..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            className="max-w-md"
-          />
-          <Button onClick={handleSearch}>Search</Button>
-        </div>
-        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
-              Advanced filters
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="flex flex-wrap gap-4 mt-2 p-4 rounded-lg border bg-card">
-              <div>
-                <label className="text-sm text-muted-foreground mr-2">Category</label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="rounded-md border bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Any</option>
-                  {Array.isArray(categories) && categories.map((c) => (
-                    <option key={c.id} value={String(c.id)}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mr-2">Type</label>
-                <select
-                  value={listingType}
-                  onChange={(e) => setListingType(e.target.value)}
-                  className="rounded-md border bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">All</option>
-                  <option value="AUCTION">Auction</option>
-                  <option value="BUY_IT_NOW">Buy It Now</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mr-2">From</label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="rounded-md border bg-background px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mr-2">To</label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="rounded-md border bg-background px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+        <SearchBar
+          categories={categories}
+          onSearch={handleSearch}
+          showAdvanced={true}
+        />
       </div>
 
       <section className="mt-12">
@@ -116,19 +53,24 @@ export function HomePage() {
                 key={cat.id}
                 className="rounded-lg border bg-card p-4"
               >
-                <h3 className="font-medium mb-2">{cat.name}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <CategoryIcon defaultIcon={cat.default_icon} iconUrl={cat.icon_url} size={22} />
+                  <h3 className="font-medium">{cat.name}</h3>
+                </div>
                 <ul className="space-y-1 text-sm text-muted-foreground">
-                  {(cat.items || []).map((item: { id: number; name: string }) => (
-                    <li key={item.id}>
-                      <button
-                        type="button"
-                        className="hover:text-foreground hover:underline text-left"
-                        onClick={() => handleCategoryItemClick(cat.id, item.name)}
-                      >
-                        {item.name}
-                      </button>
-                    </li>
-                  ))}
+                  {(cat.items || [])
+                    .filter((item: { id: number; name: string }) => item.name !== "Other")
+                    .map((item: { id: number; name: string }) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          className="hover:text-foreground hover:underline text-left"
+                          onClick={() => handleCategoryItemClick(cat.id, item.name)}
+                        >
+                          {item.name}
+                        </button>
+                      </li>
+                    ))}
                 </ul>
               </div>
             ))

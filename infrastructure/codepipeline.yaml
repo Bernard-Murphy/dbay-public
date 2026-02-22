@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: dBay CI/CD Pipeline
+Description: DBay CI/CD Pipeline
 
 Resources:
   Pipeline:

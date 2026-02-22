@@ -194,7 +194,7 @@ curl -X DELETE "http://elasticsearch:9200/listings-2023*"
 ### Stakeholder Update
 
 ```
-Subject: [SEV1] dBay Platform Incident - [Brief Description]
+Subject: [SEV1] DBay Platform Incident - [Brief Description]
 
 Impact: [What users are experiencing]
 Status: [Current state]

@@ -1,4 +1,4 @@
-# dBay Architecture
+# DBay Architecture
 
 ## System Components
 

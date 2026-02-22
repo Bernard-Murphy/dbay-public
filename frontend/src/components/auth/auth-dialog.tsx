@@ -35,6 +35,7 @@ const registerSchema = z
     password: z.string().min(4, "Password must be at least 4 characters"),
     confirmPassword: z.string(),
     bio: z.string().max(500, "Bio must be less than 500 characters").optional(),
+    avatar: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -128,10 +129,17 @@ export function AuthDialog({
         email: data.email,
         password: data.password,
         bio: data.bio || "",
+        avatar_url: data.avatar?.trim() || undefined,
       }).catch(() => null);
       if (res?.data?.token) {
+        const u = res.data.user;
         login(
-          { id: res.data.user?.id || "user-id", username: data.username, displayName: data.displayName },
+          {
+            id: u?.id || "user-id",
+            username: data.username,
+            displayName: data.displayName,
+            avatarUrl: u?.avatar_url,
+          },
           res.data.token
         );
         setMessage({ type: "success", text: "Account created. You are now logged in." });
@@ -181,7 +189,7 @@ export function AuthDialog({
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="sm:max-w-md" showClose={true}>
         <DialogHeader>
-          <DialogTitle>Welcome to dBay</DialogTitle>
+          <DialogTitle>Welcome to DBay</DialogTitle>
           <DialogDescription>
             Log in or create an account to list items, bid, and buy with Dogecoin.
           </DialogDescription>
@@ -292,6 +300,19 @@ export function AuthDialog({
                     </p>
                   )}
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="register-avatar">Avatar (URL)</Label>
+                <Input
+                  id="register-avatar"
+                  type="url"
+                  placeholder="https://..."
+                  {...registerForm.register("avatar")}
+                  disabled={registerForm.formState.isSubmitting}
+                />
+                {registerForm.formState.errors.avatar && (
+                  <p className="text-sm text-destructive mt-1">{registerForm.formState.errors.avatar.message}</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="register-bio">Bio</Label>

@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: dBay RDS Infrastructure
+Description: DBay RDS Infrastructure
 
 Parameters:
   VpcId:
@@ -14,7 +14,7 @@ Resources:
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
-      DBSubnetGroupDescription: Subnets for dBay RDS
+      DBSubnetGroupDescription: Subnets for DBay RDS
       SubnetIds: !Ref PrivateSubnets
 
   DBInstance:

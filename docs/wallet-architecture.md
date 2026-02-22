@@ -2,7 +2,7 @@
 
 ## Overview
 
-dBay uses a **custodial HD wallet** system where the platform holds Dogecoin on behalf of users. Each user gets a unique deposit address derived from a master key. All internal transactions (bids, purchases, fees) happen as database ledger entries - only deposits and withdrawals interact with the Dogecoin blockchain.
+DBay uses a **custodial HD wallet** system where the platform holds Dogecoin on behalf of users. Each user gets a unique deposit address derived from a master key. All internal transactions (bids, purchases, fees) happen as database ledger entries - only deposits and withdrawals interact with the Dogecoin blockchain.
 
 ## HD Wallet Structure
 
