@@ -33,7 +33,7 @@ services:
   redis:
     image: redis:7.2-alpine
     ports:
-      - "6379:6379"
+      - "6378:6379"
     volumes:
       - redis_data:/data
 
@@ -192,7 +192,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     ports:
-      - "3000:3000"
+      - "6251:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
