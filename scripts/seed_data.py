@@ -222,7 +222,10 @@ def run():
                 CategoryItem.objects.get_or_create(
                     category=cat,
                     name=item_name,
-                    defaults={"sort_order": i},
+                    defaults={
+                        "sort_order": i,
+                        "image_url": "https://feednana.com/random",
+                    },
                 )
 
         # Create 20-30 listings per category item (except Other), max duration 2 weeks

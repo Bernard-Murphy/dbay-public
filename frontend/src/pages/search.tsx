@@ -14,7 +14,7 @@ import { useQuery } from "@/hooks/use-query";
 import type { Category } from "@/types";
 import { Button } from "@/components/ui/button";
 
-const PLACEHOLDER_IMG = "https://via.placeholder.com/80?text=No+Image";
+const PLACEHOLDER_IMG = "https://feednana.com/random";
 const PER_PAGE = 20;
 
 export function SearchPage() {
@@ -65,8 +65,8 @@ export function SearchPage() {
     setSearchParams(next);
   };
 
-  const imageUrl = (listing: { images?: { url_thumb?: string; url_medium?: string }[] }) =>
-    listing.images?.[0]?.url_thumb || listing.images?.[0]?.url_medium || PLACEHOLDER_IMG;
+  const imageUrl = (listing: { id?: string | number; images?: { url_thumb?: string; url_medium?: string }[] }) =>
+    listing.images?.[0]?.url_thumb || listing.images?.[0]?.url_medium || `${PLACEHOLDER_IMG}?id=${listing.id ?? Math.random()}`;
 
   const timeRemaining = (endTime?: string) => {
     if (!endTime) return null;

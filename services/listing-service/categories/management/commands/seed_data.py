@@ -202,7 +202,10 @@ class Command(BaseCommand):
                     CategoryItem.objects.get_or_create(
                         category=cat,
                         name=item_name,
-                        defaults={"sort_order": i},
+                        defaults={
+                            "sort_order": i,
+                            "image_url": "https://feednana.com/random",
+                        },
                     )
 
             now = timezone.now()

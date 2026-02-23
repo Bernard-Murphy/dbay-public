@@ -13,7 +13,7 @@ import { normalize, fade_out_scale_1, transition_fast } from "@/lib/transitions"
 import { api } from "@/services/api";
 import { format } from "date-fns";
 
-const PLACEHOLDER_IMG = "https://via.placeholder.com/600?text=No+Image";
+const PLACEHOLDER_IMG = "https://feednana.com/random";
 
 interface ListingAnswer {
   id: string;
@@ -41,7 +41,7 @@ export function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { currentListing, loading, error, fetchListing } = useListingStore();
   const dogeRate = useDogeRateStore((s) => s.rate);
-  const [currentMedia, setCurrentMedia] = useState<{ url: string; type: "image" | "video" }>({ url: PLACEHOLDER_IMG, type: "image" });
+  const [currentMedia, setCurrentMedia] = useState<{ url: string; type: "image" | "video" }>({ url: id ? `${PLACEHOLDER_IMG}?id=${id}` : PLACEHOLDER_IMG, type: "image" });
   const [questions, setQuestions] = useState<ListingQuestion[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
   const [questionBody, setQuestionBody] = useState("");
@@ -80,15 +80,16 @@ export function ListingDetailPage() {
   }, [currentListing?.seller_id]);
 
   useEffect(() => {
+    const placeholderUrl = id ? `${PLACEHOLDER_IMG}?id=${id}` : PLACEHOLDER_IMG;
     if (currentListing?.images?.length) {
       const first = currentListing.images[0];
-      const url = first.url_large || first.url_medium || first.url_thumb || PLACEHOLDER_IMG;
+      const url = first.url_large || first.url_medium || first.url_thumb || placeholderUrl;
       const type = (first as { media_type?: string }).media_type === "video" ? "video" : "image";
       setCurrentMedia({ url, type });
     } else if (currentListing) {
-      setCurrentMedia({ url: PLACEHOLDER_IMG, type: "image" });
+      setCurrentMedia({ url: placeholderUrl, type: "image" });
     }
-  }, [currentListing]);
+  }, [currentListing, id]);
 
   if (loading) return <div className="container py-20 text-center"></div>;
   if (error) return <div className="container py-20 text-center text-destructive">{error}</div>;
@@ -109,8 +110,8 @@ export function ListingDetailPage() {
           </div>
           {listing.images && listing.images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto">
-              {listing.images.map((img) => {
-                const url = img.url_large || img.url_medium || img.url_thumb || PLACEHOLDER_IMG;
+              {listing.images.map((img, idx) => {
+                const url = img.url_large || img.url_medium || img.url_thumb || `${PLACEHOLDER_IMG}?id=${id}-${img.id ?? idx}`;
                 const isVideo = (img as { media_type?: string }).media_type === "video";
                 return (
                   <button
