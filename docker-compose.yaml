@@ -192,7 +192,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     ports:
-      - "6251:3000"
+      - "6251:6251"
     volumes:
       - ./frontend:/app
       - /app/node_modules

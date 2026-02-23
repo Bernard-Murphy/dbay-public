@@ -11,7 +11,7 @@ const user = process.env.VITE_PROXY_USER ?? "http://localhost:8004";
 const order = process.env.VITE_PROXY_ORDER ?? "http://localhost:8005";
 const search = process.env.VITE_PROXY_SEARCH ?? "http://localhost:8011";
 
-const devPort = parseInt(process.env.VITE_DEV_PORT ?? "3000", 10);
+const devPort = parseInt(process.env.VITE_DEV_PORT ?? "6251", 10);
 
 export default defineConfig({
   plugins: [react()],

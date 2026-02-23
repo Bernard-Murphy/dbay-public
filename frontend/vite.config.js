@@ -31,7 +31,7 @@ var search =
 var devPort = parseInt(
   process.env.VITE_DEV_PORT !== null && process.env.VITE_DEV_PORT !== void 0
     ? process.env.VITE_DEV_PORT
-    : "3000",
+    : "6251",
   10,
 );
 export default defineConfig({
