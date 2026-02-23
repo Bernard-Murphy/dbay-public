@@ -12,11 +12,18 @@ class SellerRatingSerializer(serializers.ModelSerializer):
         model = SellerRating
         fields = '__all__'
 
+class PublicUserSerializer(serializers.ModelSerializer):
+    """Read-only for public profile (no email, addresses)."""
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'display_name', 'avatar_url', 'seller_verified', 'created_at')
+
+
 class UserSerializer(serializers.ModelSerializer):
     addresses = UserAddressSerializer(many=True, read_only=True)
     seller_rating = SellerRatingSerializer(read_only=True)
     
     class Meta:
         model = User
-        fields = ('id', 'email', 'username', 'display_name', 'avatar_url', 'seller_verified', 'created_at', 'updated_at', 'addresses', 'seller_rating')
+        fields = ('id', 'email', 'username', 'display_name', 'avatar_url', 'seller_verified', 'is_staff', 'created_at', 'updated_at', 'addresses', 'seller_rating')
         read_only_fields = ('id', 'email', 'created_at', 'updated_at', 'seller_verified')

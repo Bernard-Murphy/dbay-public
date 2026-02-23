@@ -83,6 +83,9 @@ docker compose exec -T wallet-service python manage.py migrate
 docker compose exec -T user-service python manage.py migrate
 docker compose exec -T order-service python manage.py migrate
 
+echo "==> Seeding 100 users..."
+docker compose exec -T user-service python manage.py seed_users
+
 echo "==> Seeding categories and sample listings..."
 docker compose exec -T listing-service python manage.py seed_data
 

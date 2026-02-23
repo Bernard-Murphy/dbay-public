@@ -23,6 +23,7 @@ export function SearchPage() {
   const q = searchParams.get("q") ?? "";
   const category = searchParams.get("category") ?? "";
   const listingType = searchParams.get("listing_type") ?? "";
+  const sort = searchParams.get("sort") ?? "created_at:desc";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
 
   const dogeRate = useDogeRateStore((s) => s.rate);
@@ -33,8 +34,8 @@ export function SearchPage() {
   const categories = (Array.isArray(categoriesData) ? categoriesData : categoriesData?.results ?? []) as (Category & { items?: { id: number; name: string }[] })[];
 
   useEffect(() => {
-    searchListings({ q, category, listing_type: listingType, page: String(page) });
-  }, [q, category, listingType, page, searchListings]);
+    searchListings({ q, category, listing_type: listingType, sort, page: String(page) });
+  }, [q, category, listingType, sort, page, searchListings]);
 
   const handleSearch = (params: {
     q: string;
@@ -72,8 +73,11 @@ export function SearchPage() {
     const end = new Date(endTime).getTime();
     const now = Date.now();
     if (end <= now) return "Ended";
-    const d = Math.floor((end - now) / 86400);
-    const h = Math.floor(((end - now) % 86400) / 3600);
+    const diffMs = end - now;
+    const msPerDay = 86400 * 1000;
+    const msPerHour = 3600 * 1000;
+    const d = Math.floor(diffMs / msPerDay);
+    const h = Math.floor((diffMs % msPerDay) / msPerHour);
     return `${d}d ${h}h`;
   };
 
@@ -92,10 +96,29 @@ export function SearchPage() {
           showAdvanced={true}
         />
       </div>
-      <h1 className="text-2xl font-bold mb-2">Search Results</h1>
-      <p className="text-muted-foreground mb-6">
-        {loading ? "..." : `${searchTotal} result${searchTotal !== 1 ? "s" : ""}`}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Search Results</h1>
+          <p className="text-muted-foreground mt-1">
+            {loading ? "..." : `${searchTotal} result${searchTotal !== 1 ? "s" : ""}`}
+          </p>
+        </div>
+        <select
+          value={sort}
+          onChange={(e) => {
+            const next = new URLSearchParams(searchParams);
+            next.set("sort", e.target.value);
+            next.set("page", "1");
+            setSearchParams(next);
+          }}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="created_at:desc">Newest</option>
+          <option value="current_price:asc">Price: low to high</option>
+          <option value="current_price:desc">Price: high to low</option>
+          <option value="end_time:asc">Ending soon</option>
+        </select>
+      </div>
       <AnimatePresence mode="wait">
         {!loading && listings.length === 0 && (
           <motion.p initial={fade_out_scale_1} animate={normalize} exit={fade_out_scale_1} transition={transition_fast} className="text-muted-foreground">No listings found.</motion.p>

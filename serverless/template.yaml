@@ -14,6 +14,8 @@ Globals:
         DOGECOIN_RPC_URL: !Ref DogecoinRpcUrl
         ELASTICSEARCH_URL: !Ref ElasticsearchUrl
         WALLET_SERVICE_URL: http://wallet-service:8003 # Internal DNS in VPC
+        DOGECOIN_RPC_USER: !Ref DogecoinRpcUser
+        DOGECOIN_RPC_PASSWORD: !Ref DogecoinRpcPassword
         AUCTION_SERVICE_URL: http://auction-service:8002
         LISTING_SERVICE_URL: http://listing-service:8001
         ORDER_SERVICE_URL: http://order-service:8005
@@ -25,11 +27,93 @@ Parameters:
   DogecoinRpcUrl:
     Type: String
     Default: http://dogecoin-node:22555
+  DogecoinRpcUser:
+    Type: String
+    Description: Optional RPC Basic auth user
+    Default: ""
+  DogecoinRpcPassword:
+    Type: String
+    Description: Optional RPC Basic auth password
+    NoEcho: true
+    Default: ""
+  WalletMasterXpub:
+    Type: String
+    Description: BIP44 account-level xpub for deposit address derivation (prod: use Secrets Manager)
+    Default: ""
+  WalletMasterXprivSecretArn:
+    Type: String
+    Description: Optional Secrets Manager ARN for xpriv (BuildAndSignTx); else use env
+    Default: ""
   ElasticsearchUrl:
     Type: String
     Default: http://opensearch:9200
+  CognitoUserPoolId:
+    Type: String
+    Description: Cognito User Pool ID for JWT validation (optional; omit for dev)
+    Default: ""
+  UserServiceUrl:
+    Type: String
+    Description: User service base URL for resolving cognito_sub to user_id (optional)
+    Default: ""
 
 Resources:
+  # --- API Gateway HTTP API + Lambda Authorizer ---
+  DBayAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/authorizer/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Timeout: 10
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPoolId
+          USER_SERVICE_URL: !Ref UserServiceUrl
+
+  DBayAuthorizerInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns: []
+
+  DBayAuthorizerInvokePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Roles: [!Ref DBayAuthorizerInvokeRole]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource: !GetAtt DBayAuthorizerFunction.Arn
+
+  DBayHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: Prod
+      Auth:
+        DefaultAuthorizer: DBayLambdaAuthorizer
+        Authorizers:
+          DBayLambdaAuthorizer:
+            FunctionArn: !GetAtt DBayAuthorizerFunction.Arn
+            FunctionInvokeRole: !GetAtt DBayAuthorizerInvokeRole.Arn
+            Identity:
+              Headers:
+                - Authorization
+            AuthorizerPayloadFormatVersion: "2.0"
+            EnableSimpleResponses: true
+      CorsConfiguration:
+        AllowOrigins: ["*"]
+        AllowHeaders:
+          ["Content-Type", "Authorization", "X-User-ID", "X-Cognito-Sub"]
+        AllowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+
   DBayEventBus:
     Type: AWS::Events::EventBus
     Properties:
@@ -182,6 +266,31 @@ Resources:
         BroadcastTxFunctionArn: !GetAtt BlockchainBroadcasterFunction.Arn
         CheckConfirmationsFunctionArn: !GetAtt CheckConfirmationsFunction.Arn
         FinalizeLedgerFunctionArn: !GetAtt FinalizeLedgerFunction.Arn
+      Events:
+        WithdrawalRequested:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref DBayEventBus
+            Pattern:
+              source:
+                - dbay.wallet-service
+              detail-type:
+                - withdrawal.requested
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ValidateBalanceFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref FraudCheckFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref DebitLedgerFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref BuildAndSignTxFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref BlockchainBroadcasterFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CheckConfirmationsFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref FinalizeLedgerFunction
 
   DisputeStateMachine:
     Type: AWS::Serverless::StateMachine
@@ -413,25 +522,14 @@ Resources:
   CheckConfirmationsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      InlineCode: |
-        import requests, os
-        def lambda_handler(event, context):
-            # Call Doge Node
-            # For now return mock
-            return 7
-      Handler: index.lambda_handler
-      Runtime: python3.12
+      CodeUri: functions/check_confirmations/
+      Handler: app.lambda_handler
 
   CreditUserFunction:
     Type: AWS::Serverless::Function
     Properties:
-      InlineCode: |
-        import requests, os
-        def lambda_handler(event, context):
-            # Call Wallet Service to credit
-            return {}
-      Handler: index.lambda_handler
-      Runtime: python3.12
+      CodeUri: functions/credit_user/
+      Handler: app.lambda_handler
 
   ValidateBalanceFunction:
     Type: AWS::Serverless::Function
@@ -463,17 +561,17 @@ Resources:
   BuildAndSignTxFunction:
     Type: AWS::Serverless::Function
     Properties:
-      InlineCode: |
-        def lambda_handler(event, context):
-            return "signed_tx_hex"
-      Handler: index.lambda_handler
-      Runtime: python3.12
+      CodeUri: functions/build_and_sign_tx/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          WALLET_MASTER_XPUB: !Ref WalletMasterXpub
+          WALLET_MASTER_XPRIV_SECRET_ARN: !Ref WalletMasterXprivSecretArn
+          HOT_WALLET_DERIVATION_INDEX: "0"
+          WITHDRAWAL_FEE_DOGE: "1.0"
 
   FinalizeLedgerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      InlineCode: |
-        def lambda_handler(event, context):
-            return {}
-      Handler: index.lambda_handler
-      Runtime: python3.12
+      CodeUri: functions/finalize_ledger/
+      Handler: app.lambda_handler

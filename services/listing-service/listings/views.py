@@ -16,7 +16,7 @@ class ListingViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
-        serializer.save()
+        serializer.save(seller_id=self.request.user.id)
 
     @action(detail=True, methods=['post'], url_path='images/presigned-url')
     def get_presigned_url(self, request, pk=None):

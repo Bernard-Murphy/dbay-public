@@ -1,9 +1,10 @@
 import { useParams, Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useListingStore } from "@/stores/listing-store";
 import { BidPanel } from "@/components/listings/bid-panel";
 import { Button } from "@/components/ui/button";
 import { DogeIcon } from "@/components/doge-icon";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDogeWithUsd, formatDoge } from "@/lib/format";
 import { useDogeRateStore } from "@/stores/doge-rate-store";
@@ -47,6 +48,7 @@ export function ListingDetailPage() {
   const [answerBodies, setAnswerBodies] = useState<Record<string, string>>({});
   const [submittingQuestion, setSubmittingQuestion] = useState(false);
   const [submittingAnswer, setSubmittingAnswer] = useState<string | null>(null);
+  const [seller, setSeller] = useState<{ id: string; username: string; display_name?: string; avatar_url?: string | null } | null>(null);
 
   useEffect(() => {
     if (id) fetchListing(id);
@@ -57,10 +59,25 @@ export function ListingDetailPage() {
     api.get(`/questions/listings/${id}/questions/`).then((r) => setQuestions(Array.isArray(r.data) ? r.data : [])).catch(() => setQuestions([]));
   }, [id]);
 
+  const fetchBids = useCallback(() => {
+    if (!id) return;
+    api.get(`/auction/auctions/${id}/bids/`).then((r) => setBids(Array.isArray(r.data) ? r.data : [])).catch(() => setBids([]));
+  }, [id]);
+
+  const handleBidSuccess = useCallback(() => {
+    fetchBids();
+    if (id) fetchListing(id);
+  }, [fetchBids, fetchListing, id]);
+
   useEffect(() => {
     if (!id || currentListing?.listing_type !== "AUCTION") return;
-    api.get(`/auction/auctions/${id}/bids/`).then((r) => setBids(Array.isArray(r.data) ? r.data : [])).catch(() => setBids([]));
-  }, [id, currentListing?.listing_type]);
+    fetchBids();
+  }, [id, currentListing?.listing_type, fetchBids]);
+
+  useEffect(() => {
+    if (!currentListing?.seller_id) return;
+    api.get(`/user/users/${currentListing.seller_id}/`).then((r) => setSeller(r.data)).catch(() => setSeller(null));
+  }, [currentListing?.seller_id]);
 
   useEffect(() => {
     if (currentListing?.images?.length) {
@@ -120,6 +137,19 @@ export function ListingDetailPage() {
             {formatDogeWithUsd(Number(listing.current_price), dogeRate)}
           </p>
           <div className="mt-6 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: listing.description }} />
+          {seller && (
+            <div className="mt-6 p-4 rounded-lg border bg-muted/30">
+              <p className="text-sm text-muted-foreground mb-2">Seller</p>
+              <Link to={`/users/${seller.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={seller.avatar_url ?? undefined} alt="" />
+                  <AvatarFallback>{(seller.display_name || seller.username || "?")[0]}</AvatarFallback>
+                </Avatar>
+                <span className="font-medium">{seller.display_name || seller.username}</span>
+                <span className="text-muted-foreground text-sm">@{seller.username}</span>
+              </Link>
+            </div>
+          )}
           <dl className="mt-6 grid grid-cols-2 gap-2 text-sm">
             <dt className="text-muted-foreground">Condition</dt>
             <dd>{listing.condition}</dd>
@@ -129,7 +159,7 @@ export function ListingDetailPage() {
             <dd>{listing.listing_type}</dd>
           </dl>
           <div className="mt-8">
-            {listing.listing_type === "AUCTION" && <BidPanel listing={listing} />}
+            {listing.listing_type === "AUCTION" && <BidPanel listing={listing} onBidSuccess={handleBidSuccess} />}
             {listing.listing_type !== "AUCTION" && (
               <Button asChild><Link to={`/listings/${listing.id}/buy`}>Buy Now</Link></Button>
             )}

@@ -91,11 +91,13 @@ services:
     environment:
       <<: *django_env
       LISTING_SERVICE_URL: http://listing-service:8000
+      WALLET_SERVICE_URL: http://wallet-service:8000
     ports:
       - "8002:8000"
     depends_on:
       - postgres
       - redis
+      - wallet-service
 
   wallet-service:
     build:
@@ -182,23 +184,23 @@ services:
       - "22555:22555"
 
   # --- Frontend ---
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile.dev
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./frontend:/app
-  #     - /app/node_modules
-  #   environment:
-  #     # Use relative /api/v1 so Vite proxy is used. From inside the container, backends listen on port 8000 (host mapping 800x is for the host only).
-  #     - VITE_PROXY_LISTING=http://listing-service:8000
-  #     - VITE_PROXY_AUCTION=http://auction-service:8000
-  #     - VITE_PROXY_WALLET=http://wallet-service:8000
-  #     - VITE_PROXY_USER=http://user-service:8000
-  #     - VITE_PROXY_ORDER=http://order-service:8000
-  #     - VITE_PROXY_SEARCH=http://search-gateway:8000
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      # Use relative /api/v1 so Vite proxy is used. From inside the container, backends listen on port 8000 (host mapping 800x is for the host only).
+      - VITE_PROXY_LISTING=http://listing-service:8000
+      - VITE_PROXY_AUCTION=http://auction-service:8000
+      - VITE_PROXY_WALLET=http://wallet-service:8000
+      - VITE_PROXY_USER=http://user-service:8000
+      - VITE_PROXY_ORDER=http://order-service:8000
+      - VITE_PROXY_SEARCH=http://search-gateway:8000
 
 volumes:
   postgres_data:

@@ -9,7 +9,9 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
+  const { token, user } = useAuthStore.getState();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  // Header-based auth: gateway sets in prod; frontend sets in dev for listing/create and other services
+  if (user?.id) config.headers["X-User-ID"] = user.id;
   return config;
 });

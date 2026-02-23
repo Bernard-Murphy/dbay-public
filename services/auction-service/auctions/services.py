@@ -3,7 +3,7 @@ import os
 import requests
 import json
 from decimal import Decimal
-from datetime import timedelta
+from datetime import datetime, timedelta
 from django.utils import timezone
 from django.db import transaction
 from shared.cache import cache
@@ -13,7 +13,7 @@ from .models import Bid, AuctionState
 logger = logging.getLogger(__name__)
 
 LISTING_SERVICE_URL = os.environ.get('LISTING_SERVICE_URL', 'http://listing-service:8001')
-WALLET_SERVICE_URL = os.environ.get('WALLET_SERVICE_URL', 'http://wallet-service:8003')
+WALLET_SERVICE_URL = os.environ.get('WALLET_SERVICE_URL', 'http://wallet-service:8000')
 
 class AuctionService:
     def place_bid(self, listing_id, bidder_id, amount, max_auto_bid=None):
@@ -26,7 +26,7 @@ class AuctionService:
         lock_key = f"lock:auction:{listing_id}"
         lock = cache.redis.lock(lock_key, timeout=10)
         
-        if not lock.acquire(blocking=True, timeout=5):
+        if not lock.acquire(blocking=True, blocking_timeout=5):
             raise Exception("Could not acquire lock")
             
         try:
@@ -135,16 +135,20 @@ class AuctionService:
         except AuctionState.DoesNotExist:
             # Fetch from Listing Service
             try:
-                response = requests.get(f"{LISTING_SERVICE_URL}/api/v1/listings/{listing_id}/")
+                response = requests.get(f"{LISTING_SERVICE_URL}/api/v1/listings/listings/{listing_id}/")
                 if response.status_code == 200:
                     data = response.json()
                     if data['listing_type'] != 'AUCTION':
                          return None
-                         
+                    raw_end = data.get('end_time')
+                    if raw_end:
+                        end_time = datetime.fromisoformat(str(raw_end).replace('Z', '+00:00'))
+                    else:
+                        end_time = timezone.now() + timedelta(days=7)
                     state = AuctionState.objects.create(
                         listing_id=listing_id,
-                        current_price=Decimal(data['starting_price'] or 0),
-                        end_time=data['end_time'], # Need to parse ISO
+                        current_price=Decimal(int(round(float(data['starting_price'] or 0)))),
+                        end_time=end_time,
                         bid_count=0
                     )
                     return state
@@ -154,7 +158,7 @@ class AuctionService:
         return None
 
     def lock_funds(self, user_id, amount, listing_id):
-        response = requests.post(f"{WALLET_SERVICE_URL}/api/v1/wallet/internal/lock", json={
+        response = requests.post(f"{WALLET_SERVICE_URL}/api/v1/wallet/wallet/internal/lock/", json={
             "user_id": str(user_id),
             "amount": str(amount),
             "reference_type": "auction",
@@ -164,7 +168,7 @@ class AuctionService:
              raise Exception(f"Failed to lock funds: {response.text}")
 
     def unlock_funds(self, user_id, amount, listing_id):
-        requests.post(f"{WALLET_SERVICE_URL}/api/v1/wallet/internal/unlock", json={
+        requests.post(f"{WALLET_SERVICE_URL}/api/v1/wallet/wallet/internal/unlock/", json={
             "user_id": str(user_id),
             "amount": str(amount),
             "reference_type": "auction",

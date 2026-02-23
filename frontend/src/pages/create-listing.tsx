@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PriceInput } from "@/components/price-input";
+import { FilePreview } from "@/components/file-preview";
+import { useQuery } from "@/hooks/use-query";
 import { useListingStore } from "@/stores/listing-store";
 import type { Listing } from "@/types";
+import { toast } from "sonner";
 
 const CONDITIONS = ["NEW", "LIKE_NEW", "GOOD", "FAIR", "POOR"] as const;
 const TYPES = ["AUCTION", "BUY_IT_NOW", "BOTH"] as const;
@@ -14,6 +17,12 @@ const TYPES = ["AUCTION", "BUY_IT_NOW", "BOTH"] as const;
 export function CreateListingPage() {
   const navigate = useNavigate();
   const { createListing, error: storeError } = useListingStore();
+  const { data: categoriesData } = useQuery<{ results?: { id: number; name: string }[] } | { id: number; name: string }[]>(
+    "categories/with-items/",
+    { fallback: [] }
+  );
+  const categories = (Array.isArray(categoriesData) ? categoriesData : categoriesData?.results ?? []) as { id: number; name: string }[];
+
   const [form, setForm] = useState<Partial<Listing>>({
     title: "",
     description: "",
@@ -25,10 +34,12 @@ export function CreateListingPage() {
     quantity: 1,
     shipping_cost: 0,
     shipping_from_country: "US",
+    category_id: undefined,
   });
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [fileProgress, setFileProgress] = useState<Record<number, number>>({});
 
   const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100MB
 
@@ -36,7 +47,9 @@ export function CreateListingPage() {
     const chosen = Array.from(e.target.files ?? []);
     const err = chosen.find((f) => f.type.startsWith("video/") && f.size > MAX_VIDEO_BYTES);
     if (err) {
-      setFileError(`Video "${err.name}" is over 100MB. Max size for videos is 100MB.`);
+      const msg = `Video "${err.name}" is over 100MB. Max size for videos is 100MB.`;
+      setFileError(msg);
+      toast.error(msg);
       return;
     }
     setFileError("");
@@ -50,14 +63,19 @@ export function CreateListingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFileProgress({});
     setLoading(true);
     try {
-      const created = await createListing(form, files);
+      const created = await createListing(form, files, (index, percent) => {
+        setFileProgress((prev) => ({ ...prev, [index]: percent }));
+      });
+      toast.success("Listing created.");
       navigate(`/listings/${created.id}`);
     } catch {
-      // error in store
+      toast.error("Failed to create listing.");
     } finally {
       setLoading(false);
+      setFileProgress({});
     }
   };
 
@@ -73,6 +91,21 @@ export function CreateListingPage() {
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             required
           />
+        </div>
+        <div>
+          <Label htmlFor="category">Category</Label>
+          <select
+            id="category"
+            value={form.category_id ?? ""}
+            onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value ? Number(e.target.value) : undefined }))}
+            className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            required
+          >
+            <option value="">Select a category</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
         </div>
         <div>
           <Label htmlFor="description">Description</Label>
@@ -140,19 +173,30 @@ export function CreateListingPage() {
             className="mt-1 block w-full text-sm"
             onChange={handleFileChange}
           />
-          {fileError && <p className="text-sm text-destructive mt-1">{fileError}</p>}
           {files.length > 0 && (
-            <ul className="mt-2 space-y-1 text-sm">
+            <ul className="mt-2 space-y-3">
               {files.map((f, i) => (
-                <li key={i} className="flex items-center justify-between gap-2">
-                  <span className="truncate">{f.name}</span>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => removeFile(i)}>Remove</Button>
+                <li key={i} className="flex items-center gap-3 p-2 rounded-lg border">
+                  <FilePreview file={f} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{f.name}</p>
+                    {loading && fileProgress[i] !== undefined && (
+                      <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-300"
+                          style={{ width: `${fileProgress[i]}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removeFile(i)} disabled={loading}>
+                    Remove
+                  </Button>
                 </li>
               ))}
             </ul>
           )}
         </div>
-        {storeError && <p className="text-sm text-destructive">{storeError}</p>}
         <div className="flex gap-2">
           <Button type="submit" disabled={loading}>{loading ? "Creating..." : "Create Listing"}</Button>
           <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancel</Button>

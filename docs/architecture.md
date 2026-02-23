@@ -94,3 +94,8 @@
 - All services in private VPC
 - API Gateway is only public endpoint
 - Secrets in AWS Secrets Manager
+
+### Authentication (Cognito)
+
+- **Production:** Frontend uses AWS Amplify to sign in with Cognito; sends `Authorization: Bearer <idToken>` to the API. The Lambda authorizer (`serverless/functions/authorizer`) validates the JWT with the User Pool JWKS, optionally resolves `cognito_sub` to app `user_id` via the User service internal `/api/v1/user/internal/resolve/` endpoint, and returns context that API Gateway maps to request headers: `X-Cognito-Sub`, `X-Cognito-Username`, `X-Cognito-Email`, `X-User-ID`. User and Listing services trust these headers.
+- **Local dev:** Set `VITE_USE_COGNITO=false` (default). Frontend uses `POST /user/login/` (dev-only) and sends `X-User-ID` from the auth store; no Cognito or authorizer. User service `/users/me/` accepts either `X-Cognito-Sub` or `X-User-ID`.

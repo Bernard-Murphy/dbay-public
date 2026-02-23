@@ -18,6 +18,7 @@ export const useAuctionStore = create<AuctionState>((set, get) => ({
       set({ error: null });
     } catch (e) {
       set({ error: (e as Error).message });
+      throw e;
     } finally {
       set({ loading: false });
     }

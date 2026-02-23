@@ -14,12 +14,15 @@ import { normalize, fade_out_scale_1, transition_fast } from "@/lib/transitions"
 import Spinner from "@/components/ui/spinner";
 
 export function WalletPage() {
-  const { balance, depositAddress, history, loading, fetchBalance, fetchDepositAddress, fetchHistory, withdraw } = useWalletStore();
+  const { balance, depositAddress, history, loading, fetchBalance, fetchDepositAddress, fetchHistory, withdraw, simulateDeposit } = useWalletStore();
   const dogeRate = useDogeRateStore((s) => s.rate);
   const [amount, setAmount] = useState(0);
   const [address, setAddress] = useState("");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [withdrawError, setWithdrawError] = useState("");
+  const [simulateAmount, setSimulateAmount] = useState(100);
+  const [simulateLoading, setSimulateLoading] = useState(false);
+  const [simulateError, setSimulateError] = useState("");
 
   useEffect(() => {
     fetchBalance();
@@ -32,13 +35,26 @@ export function WalletPage() {
     setWithdrawError("");
     setWithdrawLoading(true);
     try {
-      await withdraw(amount, address);
+      await withdraw(Math.floor(amount), address);
       setAmount(0);
       setAddress("");
     } catch (e) {
       setWithdrawError((e as Error).message);
     } finally {
       setWithdrawLoading(false);
+    }
+  };
+
+  const handleSimulateDeposit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSimulateError("");
+    setSimulateLoading(true);
+    try {
+      await simulateDeposit(simulateAmount);
+    } catch (e) {
+      setSimulateError((e as Error).message);
+    } finally {
+      setSimulateLoading(false);
     }
   };
 
@@ -86,6 +102,26 @@ export function WalletPage() {
               className="mt-4"
             />
           )}
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-sm text-muted-foreground mb-2">Dev: simulate a deposit (credits DOGE to your wallet)</p>
+            <form onSubmit={handleSimulateDeposit} className="flex flex-wrap items-end gap-2">
+              <div className="flex-1 min-w-[120px]">
+                <Label htmlFor="simulate-amount" className="sr-only">Amount</Label>
+                <Input
+                  id="simulate-amount"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={simulateAmount}
+                  onChange={(e) => setSimulateAmount(Number(e.target.value) || 0)}
+                />
+              </div>
+              <Button type="submit" variant="secondary" size="sm" disabled={simulateLoading || simulateAmount < 1}>
+                {simulateLoading ? "Adding…" : "Add test DOGE"}
+              </Button>
+            </form>
+            {simulateError && <p className="text-sm text-destructive mt-1">{simulateError}</p>}
+          </div>
         </div>
         <div className="rounded-lg border bg-card p-6">
           <h2 className="font-semibold mb-4">Withdraw</h2>

@@ -8,20 +8,29 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 rpc_url = os.environ.get('DOGECOIN_RPC_URL', 'http://dogecoin-node:22555')
+rpc_user = os.environ.get('DOGECOIN_RPC_USER')
+rpc_password = os.environ.get('DOGECOIN_RPC_PASSWORD')
 event_bus_name = os.environ.get('EVENT_BUS_NAME', 'dbay-events')
 events_client = boto3.client('events')
 
+
+def _rpc_post(payload):
+    auth = None
+    if rpc_user and rpc_password:
+        auth = (rpc_user, rpc_password)
+    return requests.post(rpc_url, json=payload, auth=auth, timeout=30)
+
+
 def lambda_handler(event, context):
     try:
-        # Call listtransactions
         payload = {
             "method": "listtransactions",
             "params": ["*", 10, 0],
             "id": 1,
             "jsonrpc": "2.0"
         }
-        
-        response = requests.post(rpc_url, json=payload)
+        response = _rpc_post(payload)
+        response.raise_for_status()
         result = response.json().get('result', [])
         
         new_txs = []

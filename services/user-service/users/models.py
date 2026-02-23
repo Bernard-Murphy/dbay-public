@@ -7,8 +7,10 @@ class User(models.Model):
     username = models.CharField(max_length=150, unique=True)
     display_name = models.CharField(max_length=150, blank=True)
     avatar_url = models.URLField(blank=True, null=True)
+    avatar_s3_key = models.CharField(max_length=512, blank=True, null=True)
     cognito_sub = models.CharField(max_length=255, unique=True)
     seller_verified = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

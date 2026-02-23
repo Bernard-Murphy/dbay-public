@@ -42,24 +42,14 @@ CATEGORIES_WITH_ITEMS = [
     ("Jewelry", ["Rings", "Necklaces", "Earrings", "Bracelets", "Watches", "Body Jewelry", "Vintage", "Custom", "Other"]),
 ]
 
-SEED_USER_IDS = [str(uuid.uuid4()) for _ in range(100)]
+# Deterministic IDs and usernames (must match user-service seed_users)
 SEED_USERNAME_WORDS = [
     "surfer", "skate", "bookworm", "gamer", "travel", "music", "art", "tech",
     "vintage", "craft", "fitness", "chef", "photo", "garden", "motor", "wave",
     "star", "river", "mountain", "ocean", "sunny", "cosmic", "lucky", "bold",
 ]
-def _gen_seed_usernames(n=100):
-    seen = set()
-    out = []
-    while len(out) < n:
-        word = random.choice(SEED_USERNAME_WORDS)
-        num = random.randint(10, 999)
-        u = f"{word}{num}"
-        if u not in seen:
-            seen.add(u)
-            out.append(u)
-    return out
-SEED_USERNAMES = _gen_seed_usernames(100)
+SEED_USER_IDS = [str(uuid.uuid5(uuid.NAMESPACE_DNS, f"dbay.seed.user.{i}")) for i in range(100)]
+SEED_USERNAMES = [f"{SEED_USERNAME_WORDS[i % len(SEED_USERNAME_WORDS)]}{10 + i}" for i in range(100)]
 SEED_DOGE_RATE = Decimal("0.10")
 PRICE_RANGE_USD = {
     "Automobiles": (30_000, 85_000),
@@ -84,11 +74,10 @@ def _seed_bids(auction_listings):
     except ImportError:
         return
     base = os.environ.get("AUCTION_SERVICE_URL", "http://localhost:8002")
-    to_bid = [l for l in auction_listings if random.random() < 0.75]
-    for listing in to_bid:
+    for listing in auction_listings:
         try:
             start = int(listing.starting_price)
-            num_bids = random.randint(1, 10)
+            num_bids = random.randint(0, 5)
             for i in range(num_bids):
                 amount = start + (i + 1) * max(1, start // 20)
                 bidder_id = random.choice(SEED_USER_IDS)
@@ -103,52 +92,90 @@ def _seed_bids(auction_listings):
         except Exception:
             pass
 
-# Realistic listing titles per (category_name, item_name). Two titles per item.
+# Realistic listing titles per (category_name, item_name). Extended for 20-30 listings per item.
 SEED_LISTING_TITLES = {
-    ("Automobiles", "Tesla"): ["2024 Tesla Model X Plaid (20k miles)", "2022 Tesla Model 3 Long Range"],
-    ("Automobiles", "Hyundai"): ["2023 Hyundai Ioniq 5 SEL", "Hyundai Tucson Hybrid 2022"],
-    ("Automobiles", "Honda"): ["Honda Civic 2021 EX", "Honda CR-V 2023 AWD"],
-    ("Automobiles", "Toyota"): ["Toyota Camry 2022 LE", "Toyota RAV4 Hybrid XLE"],
-    ("Automobiles", "Ford"): ["Ford F-150 2023 XLT", "Ford Mustang Mach-E"],
-    ("Automobiles", "BMW"): ["BMW 330i 2022", "BMW X5 2023"],
-    ("Automobiles", "Mercedes"): ["Mercedes C300 2022", "Mercedes EQB 250"],
-    ("Automobiles", "Chevrolet"): ["Chevrolet Silverado 1500 2022", "Chevy Bolt EV 2023"],
-    ("Electronics", "Laptops"): ["Dell XPS 15 BRAND NEW", "MacBook Pro 14 M3 Pro"],
-    ("Electronics", "Phones"): ["iPhone 15 Pro 256GB", "Samsung Galaxy S24 Ultra"],
-    ("Electronics", "Tablets"): ["iPad Pro 12.9\" M2", "Samsung Tab S9"],
-    ("Electronics", "Cameras"): ["Sony A7 IV Body", "Canon R6 Mark II"],
-    ("Electronics", "Headphones"): ["Sony WH-1000XM5", "AirPods Pro 2"],
-    ("Electronics", "Gaming"): ["PlayStation 5 Console", "Xbox Series X"],
-    ("Electronics", "Smart Home"): ["Nest Learning Thermostat", "Ring Video Doorbell Pro"],
-    ("Electronics", "Accessories"): ["Anker 737 Power Bank", "Logitech MX Master 3S"],
-    ("Men's Apparel", "T-shirts"): ["Plain White Cotton Tee Pack of 3", "Vintage Band Graphic Tee"],
-    ("Men's Apparel", "Hoodies"): ["Champion Reverse Weave Hoodie", "Nike Tech Fleece"],
-    ("Men's Apparel", "Jeans"): ["Levi's 501 Original", "Wrangler Authentics Straight"],
-    ("Women's Apparel", "Dresses"): ["Summer Floral Midi Dress", "Little Black Dress Size M"],
-    ("Women's Apparel", "Shoes"): ["Steve Madden Heels 8", "Birkenstock Arizona Sandals"],
-    ("Home & Garden", "Furniture"): ["IKEA KALLAX Shelf Unit", "West Elm Mid-Century Desk"],
-    ("Home & Garden", "Kitchen"): ["KitchenAid Stand Mixer", "Ninja Foodi 8-in-1"],
-    ("Sports", "Cycling"): ["Trek Domane AL 3", "Garmin Edge 1040"],
-    ("Sports", "Running"): ["Nike Pegasus 40", "Garmin Forerunner 265"],
-    ("Sports", "Golf"): ["Callaway Rogue Driver", "Titleist Pro V1 Dozen"],
-    ("Toys & Games", "Board Games"): ["Catan 5th Edition", "Ticket to Ride Europe"],
-    ("Toys & Games", "Video Games"): ["Zelda Tears of the Kingdom", "Elden Ring PS5"],
-    ("Books", "Fiction"): ["Project Hail Mary Hardcover", "Fourth Wing First Edition"],
-    ("Books", "Non-Fiction"): ["Atomic Habits James Clear", "Sapiens Yuval Harari"],
-    ("Collectibles", "Trading Cards"): ["Charizard Holo PSA 9", "Michael Jordan Rookie Card"],
-    ("Jewelry", "Watches"): ["Seiko 5 Automatic", "Casio G-Shock DW5600"],
-    ("Jewelry", "Rings"): ["Sterling Silver Band", "Moissanite Solitaire"],
+    ("Automobiles", "Tesla"): ["2024 Tesla Model X Plaid (20k miles)", "2022 Tesla Model 3 Long Range", "2023 Tesla Model Y AWD", "Tesla Model S Plaid 2023", "2021 Tesla Model 3 SR+"],
+    ("Automobiles", "Hyundai"): ["2023 Hyundai Ioniq 5 SEL", "Hyundai Tucson Hybrid 2022", "Hyundai Kona Electric 2024", "Hyundai Santa Fe 2023"],
+    ("Automobiles", "Honda"): ["Honda Civic 2021 EX", "Honda CR-V 2023 AWD", "Honda Accord 2022 Touring", "Honda Pilot 2023"],
+    ("Automobiles", "Toyota"): ["Toyota Camry 2022 LE", "Toyota RAV4 Hybrid XLE", "Toyota Highlander 2023", "Toyota 4Runner TRD Off-Road"],
+    ("Automobiles", "Ford"): ["Ford F-150 2023 XLT", "Ford Mustang Mach-E", "Ford Bronco Sport 2022", "Ford Explorer ST 2023"],
+    ("Automobiles", "BMW"): ["BMW 330i 2022", "BMW X5 2023", "BMW i4 eDrive40 2024", "BMW M3 Competition"],
+    ("Automobiles", "Mercedes"): ["Mercedes C300 2022", "Mercedes EQB 250", "Mercedes E-Class 2023", "Mercedes GLC 300"],
+    ("Automobiles", "Chevrolet"): ["Chevrolet Silverado 1500 2022", "Chevy Bolt EV 2023", "Chevrolet Tahoe 2023", "Camaro 2SS 2022"],
+    ("Electronics", "Laptops"): ["Dell XPS 15 BRAND NEW", "MacBook Pro 14 M3 Pro", "Lenovo ThinkPad X1 Carbon", "ASUS ROG Zephyrus G14"],
+    ("Electronics", "Phones"): ["iPhone 15 Pro 256GB", "Samsung Galaxy S24 Ultra", "Google Pixel 8 Pro", "OnePlus 12 256GB"],
+    ("Electronics", "Tablets"): ["iPad Pro 12.9\" M2", "Samsung Tab S9", "Microsoft Surface Pro 9", "iPad Air 5th Gen"],
+    ("Electronics", "Cameras"): ["Sony A7 IV Body", "Canon R6 Mark II", "Nikon Z8", "Fujifilm X-T5"],
+    ("Electronics", "Headphones"): ["Sony WH-1000XM5", "AirPods Pro 2", "Bose QuietComfort Ultra", "Sennheiser HD 660S"],
+    ("Electronics", "Gaming"): ["PlayStation 5 Console", "Xbox Series X", "Nintendo Switch OLED", "Steam Deck 256GB"],
+    ("Electronics", "Smart Home"): ["Nest Learning Thermostat", "Ring Video Doorbell Pro", "Echo Dot 5th Gen", "Philips Hue Starter Kit"],
+    ("Electronics", "Accessories"): ["Anker 737 Power Bank", "Logitech MX Master 3S", "Samsung T7 1TB SSD", "Apple Magic Keyboard"],
+    ("Men's Apparel", "T-shirts"): ["Plain White Cotton Tee Pack of 3", "Vintage Band Graphic Tee", "Nike Dri-FIT Training Tee", "Carhartt Pocket T-Shirt"],
+    ("Men's Apparel", "Hoodies"): ["Champion Reverse Weave Hoodie", "Nike Tech Fleece", "Carhartt Midweight Hoodie", "Patagonia Better Sweater"],
+    ("Men's Apparel", "Shorts"): ["Nike Dri-FIT Running Shorts", "Chubbies Classic 5.5\"", "Patagonia Baggies"],
+    ("Men's Apparel", "Jeans"): ["Levi's 501 Original", "Wrangler Authentics Straight", "Wrangler Relaxed Fit", "Lee Regular Fit"],
+    ("Men's Apparel", "Jackets"): ["Carhartt Active Jacket", "Patagonia Nano Puff", "North Face Denali 2"],
+    ("Men's Apparel", "Sneakers"): ["Nike Air Max 90", "Adidas Ultraboost 22", "New Balance 574"],
+    ("Men's Apparel", "Boots"): ["Timberland 6\" Premium", "Red Wing Iron Ranger", "Wolverine 1000 Mile"],
+    ("Men's Apparel", "Accessories"): ["Leather Belt Brown", "Casio Watch", "Ray-Ban Aviator"],
+    ("Women's Apparel", "Dresses"): ["Summer Floral Midi Dress", "Little Black Dress Size M", "Anthropologie Maxi Dress", "Reformation Silk Dress"],
+    ("Women's Apparel", "Tops"): ["Silk Blouse White", "Free People Off Shoulder", "Zara Linen Button-Up"],
+    ("Women's Apparel", "Pants"): ["High-Waist Wide Leg", "Lululemon Align 25\"", "Levi's 721 High Rise"],
+    ("Women's Apparel", "Skirts"): ["Pleated Midi Skirt", "Denim Mini Skirt", "A-Line Wool Skirt"],
+    ("Women's Apparel", "Sweaters"): ["Cashmere Crewneck Gray", "Oversized Cardigan", "Turtleneck Sweater"],
+    ("Women's Apparel", "Shoes"): ["Steve Madden Heels 8", "Birkenstock Arizona Sandals", "Dr. Martens 1460", "UGG Classic Short"],
+    ("Women's Apparel", "Bags"): ["Leather Crossbody Bag", "Longchamp Tote", "Vintage Coach Bag"],
+    ("Women's Apparel", "Jewelry"): ["Gold Hoop Earrings", "Pearl Necklace", "Stackable Rings Set"],
+    ("Home & Garden", "Furniture"): ["IKEA KALLAX Shelf Unit", "West Elm Mid-Century Desk", "Article Sven Charme Sofa", "CB2 Acorn Coffee Table"],
+    ("Home & Garden", "Decor"): ["Ceramic Vase Set", "Framed Abstract Art", "Throw Pillow Set"],
+    ("Home & Garden", "Kitchen"): ["KitchenAid Stand Mixer", "Ninja Foodi 8-in-1", "Vitamix 5200", "Le Creuset Dutch Oven"],
+    ("Home & Garden", "Outdoor"): ["Weber Spirit Grill", "Patio Dining Set", "String Lights 48ft"],
+    ("Home & Garden", "Tools"): ["DeWalt 20V Drill", "Craftsman Tool Set", "Milwaukee M18 Impact"],
+    ("Home & Garden", "Lighting"): ["Philips Hue Bridge", "Table Lamp Ceramic", "LED Strip Lights"],
+    ("Home & Garden", "Bedding"): ["Brooklinen Sheet Set Queen", "Down Comforter King", "Memory Foam Pillow"],
+    ("Home & Garden", "Plants"): ["Monstera Deliciosa Potted", "Snake Plant Large", "Pothos Hanging Basket"],
+    ("Sports", "Cycling"): ["Trek Domane AL 3", "Garmin Edge 1040", "Specialized Sirrus 2.0", "Peloton Bike"],
+    ("Sports", "Running"): ["Nike Pegasus 40", "Garmin Forerunner 265", "Brooks Ghost 15", "Apple Watch Ultra"],
+    ("Sports", "Fitness"): ["Bowflex SelectTech Dumbbells", "Yoga Mat Manduka", "Resistance Bands Set"],
+    ("Sports", "Camping"): ["REI Half Dome Tent", "Yeti Tundra 45", "Petzl Headlamp"],
+    ("Sports", "Water Sports"): ["Oru Kayak Beach LT", "Body Glove Paddle Board", "Snorkel Set"],
+    ("Sports", "Winter Sports"): ["Burton Custom Snowboard", "K2 Skis 170cm", "Smith Helmet"],
+    ("Sports", "Team Sports"): ["Wilson Football", "Spalding Basketball", "Franklin Bat"],
+    ("Sports", "Golf"): ["Callaway Rogue Driver", "Titleist Pro V1 Dozen", "TaylorMade Stealth Irons", "Nike Golf Shoes"],
+    ("Toys & Games", "Board Games"): ["Catan 5th Edition", "Ticket to Ride Europe", "Wingspan", "Azul"],
+    ("Toys & Games", "Video Games"): ["Zelda Tears of the Kingdom", "Elden Ring PS5", "Mario Kart 8 Deluxe", "Spider-Man 2 PS5"],
+    ("Toys & Games", "Action Figures"): ["Star Wars Black Series", "Marvel Legends", "Funko Pop Set"],
+    ("Toys & Games", "Puzzles"): ["Ravensburger 1000pc", "Liberty Puzzle Wooden", "Eurographics Map"],
+    ("Toys & Games", "Card Games"): ["Pokemon Booster Box", "MTG Commander Deck", "Uno Flip"],
+    ("Books", "Fiction"): ["Project Hail Mary Hardcover", "Fourth Wing First Edition", "The Midnight Library", "Where the Crawdads Sing"],
+    ("Books", "Non-Fiction"): ["Atomic Habits James Clear", "Sapiens Yuval Harari", "Educated Tara Westover", "Thinking Fast and Slow"],
+    ("Books", "Children's"): ["Goodnight Moon Board Book", "The Very Hungry Caterpillar", "Brown Bear Set"],
+    ("Books", "Textbooks"): ["Calculus Early Transcendentals", "Organic Chemistry 3rd Ed", "Principles of Economics"],
+    ("Books", "Comics"): ["Watchmen Graphic Novel", "Sandman Omnibus", "Maus Complete"],
+    ("Collectibles", "Trading Cards"): ["Charizard Holo PSA 9", "Michael Jordan Rookie Card", "Mickey Mantle 1952", "Pikachu Illustrator"],
+    ("Collectibles", "Coins"): ["American Silver Eagle", "Morgan Dollar 1889", "Gold Maple Leaf 1oz"],
+    ("Collectibles", "Stamps"): ["Inverted Jenny", "British Guiana 1c", "Stamp Collection Album"],
+    ("Jewelry", "Watches"): ["Seiko 5 Automatic", "Casio G-Shock DW5600", "Citizen Eco-Drive", "Tissot PRX"],
+    ("Jewelry", "Rings"): ["Sterling Silver Band", "Moissanite Solitaire", "Vintage Signet Ring", "Tungsten Wedding Band"],
+    ("Jewelry", "Necklaces"): ["Gold Chain 18in", "Sapphire Pendant", "Layered Necklace Set"],
+    ("Jewelry", "Earrings"): ["Diamond Studs", "Hoop Earrings Gold", "Pearl Studs"],
+    ("Jewelry", "Bracelets"): ["Tennis Bracelet", "Beaded Bracelet", "Leather Wrap"],
 }
 
 
+_TITLE_VARIANTS = ["excellent condition", "low miles", "like new", "well maintained", "recent model", "great shape", "clean", "minor wear"]
+
+
 def get_seed_titles(cat_name, item_name, n):
-    """Return realistic title for (cat_name, item_name) index n, or fallback."""
+    """Return realistic title for (cat_name, item_name) index n."""
     key = (cat_name, item_name)
     if key in SEED_LISTING_TITLES:
         titles = SEED_LISTING_TITLES[key]
         if n < len(titles):
             return titles[n]
-    return f"{item_name} — {cat_name} listing {n + 1}"
+        base = titles[-1] if titles else item_name
+        return f"{base} ({_TITLE_VARIANTS[n % len(_TITLE_VARIANTS)]})"
+    return f"{item_name} #{n + 1}"
 
 
 class Command(BaseCommand):
@@ -179,7 +206,6 @@ class Command(BaseCommand):
                     )
 
             now = timezone.now()
-            end_time = now + timedelta(days=14)
             created_auction_listings = []
             for cat_name, items in CATEGORIES_WITH_ITEMS:
                 cat = Category.objects.get(slug=path_for(cat_name))
@@ -195,6 +221,7 @@ class Command(BaseCommand):
                         seller_id = random.choice(SEED_USER_IDS)
                         is_auction = n % 2 == 0
                         start_price = max(1, price_doge - random.randint(0, min(price_doge // 10, 1000)))
+                        end_time = now + timedelta(days=random.randint(1, 14))
                         listing = Listing.objects.create(
                             seller_id=seller_id,
                             category=cat,

@@ -18,6 +18,7 @@ interface WalletState {
   fetchDepositAddress: () => Promise<void>;
   fetchHistory: () => Promise<void>;
   withdraw: (amount: number, address: string) => Promise<void>;
+  simulateDeposit: (amount: number) => Promise<void>;
 }
 
 export const useWalletStore = create<WalletState>((set, get) => ({
@@ -69,9 +70,17 @@ export const useWalletStore = create<WalletState>((set, get) => ({
 
   withdraw: async (amount, address) => {
     await api.post("/wallet/wallet/withdraw/", {
-      amount,
+      amount: Math.floor(Number(amount)),
       destination_address: address,
     });
+    get().fetchBalance();
+    get().fetchHistory();
+  },
+
+  simulateDeposit: async (amount) => {
+    const whole = Math.floor(Number(amount));
+    if (whole <= 0) throw new Error("Amount must be positive");
+    await api.post("/wallet/wallet/simulate-deposit/", { amount: whole });
     get().fetchBalance();
     get().fetchHistory();
   },

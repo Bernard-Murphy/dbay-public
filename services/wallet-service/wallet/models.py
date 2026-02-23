@@ -29,6 +29,7 @@ class LedgerEntry(models.Model):
     ENTRY_TYPES = [
         ('DEPOSIT', 'Deposit'),
         ('WITHDRAWAL', 'Withdrawal'),
+        ('WITHDRAWAL_REQUEST', 'Withdrawal Request'),
         ('BID_LOCK', 'Bid Lock'),
         ('BID_UNLOCK', 'Bid Unlock'),
         ('ESCROW_LOCK', 'Escrow Lock'),

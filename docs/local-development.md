@@ -171,6 +171,17 @@ Key variables are set in `docker compose.yaml` for each service, for example:
 - `REDIS_URL`, `MONGO_URI`, `ELASTICSEARCH_URL`, `AWS_ENDPOINT_URL` for caches and external services
 - Frontend: `VITE_API_BASE_URL` (optional; Vite proxy is used when running locally)
 
+### Dogecoin and wallet
+
+Real deposits and withdrawals require a real BIP44 master key and a Dogecoin RPC (no full node download when using a remote RPC):
+
+- **WALLET_MASTER_XPUB** – Account-level xpub for deriving deposit addresses (production: load from AWS Secrets Manager). Do not use for real funds until key management is production-ready.
+- **WALLET_MASTER_XPRIV** – Used only in the BuildAndSignTx Lambda for signing withdrawals (production: store in Secrets Manager, grant Lambda read access).
+- **DOGECOIN_RPC_URL** – Remote RPC endpoint (e.g. `http://dogecoin-node:22555` for local mock).
+- **DOGECOIN_RPC_USER** / **DOGECOIN_RPC_PASSWORD** – Optional Basic auth if the RPC requires it.
+
+For local dev without a real chain, the mock Dogecoin node supports `listtransactions`, `gettransaction`, `listunspent`, `createrawtransaction`, `signrawtransaction`, and `sendrawtransaction`. Set **USE_SYNC_WITHDRAWAL=1** in the wallet service to process withdrawals synchronously (no Step Function).
+
 ## Troubleshooting
 
 ### Service won’t start
