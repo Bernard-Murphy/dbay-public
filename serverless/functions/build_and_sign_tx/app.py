@@ -49,7 +49,7 @@ def _derive_address_and_wif(xpub: str, xpriv: str, path_index: int) -> tuple:
     derivation = Derivation(path=path, semantic="p2pkh")
     # Address from xpub (for listunspent)
     hd_pub = HDWallet(symbol=DOGE).from_xpublic_key(xpublic_key=xpub).from_path(path=derivation)
-    address = hd_pub.address()
+    address = hd_pub.p2pkh_address()
     # WIF from xpriv (for signing)
     hd_priv = HDWallet(symbol=DOGE).from_xprivate_key(xprivate_key=xpriv).from_path(path=derivation)
     wif = hd_priv.wif()

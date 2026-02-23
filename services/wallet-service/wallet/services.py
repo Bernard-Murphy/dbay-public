@@ -22,15 +22,12 @@ def _derive_deposit_address(master_xpub: str, path_index: int) -> str:
         .from_xpublic_key(xpublic_key=master_xpub)
         .from_path(path=Derivation(path=f"m/0/{path_index}", semantic="p2pkh"))
     )
-    return hd.address()
+    return hd.p2pkh_address()
 
 class WalletService:
     def __init__(self):
-        # In production load from Secrets Manager; dev uses env (do not use for real funds until key management is production-ready)
-        self.master_xpub = os.environ.get(
-            'WALLET_MASTER_XPUB',
-            'xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9c6aMufMR9b3LzF4i5G9w1c5s1L1F1F1F1F1F1F1F1F1F1F1F',
-        )
+        # In production load from Secrets Manager; dev uses env. Empty = use mock address (no real HD derivation).
+        self.master_xpub = (os.environ.get('WALLET_MASTER_XPUB') or '').strip()
 
     def get_or_create_wallet(self, user_id):
         wallet, created = WalletBalance.objects.get_or_create(user_id=user_id)
@@ -42,7 +39,10 @@ class WalletService:
         with transaction.atomic():
             path_index = DepositAddress.objects.select_for_update().count() + 1
             derivation_path = f"m/44'/3'/0'/0/{path_index}"
-            address = _derive_deposit_address(self.master_xpub, path_index)
+            if self.master_xpub:
+                address = _derive_deposit_address(self.master_xpub, path_index)
+            else:
+                address = f"D{uuid.uuid4().hex[:33]}"
             DepositAddress.objects.create(
                 user_id=user_id,
                 address=address,

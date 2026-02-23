@@ -105,7 +105,10 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *django_env
-      DOGECOIN_RPC_URL: http://dogecoin-node:22555
+      DOGECOIN_RPC_URL: ${DOGECOIN_RPC_URL:-http://dogecoin-node:22555}
+      WALLET_MASTER_XPUB: ${WALLET_MASTER_XPUB:-}
+      WALLET_MASTER_XPRIV: ${WALLET_MASTER_XPRIV:-}
+      USE_SYNC_WITHDRAWAL: ${USE_SYNC_WITHDRAWAL:-}
     ports:
       - "8003:8000"
     depends_on:

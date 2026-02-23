@@ -227,174 +227,176 @@ export function AuthDialog({
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "register" | "forgot")}>
           <TabsList className="grid w-full grid-cols-3">
             <BouncyClick>
-              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger className="w-full text-xs sm:text-sm" value="login">Login</TabsTrigger>
             </BouncyClick>
             <BouncyClick>
-              <TabsTrigger value="register">Register</TabsTrigger>
+              <TabsTrigger className="w-full text-xs sm:text-sm" value="register">Register</TabsTrigger>
             </BouncyClick>
             <BouncyClick>
-              <TabsTrigger value="forgot">Forgot Password</TabsTrigger>
+              <TabsTrigger className="w-full text-xs sm:text-sm" value="forgot">Forgot Password</TabsTrigger>
             </BouncyClick>
           </TabsList>
-          {activeTab === "login" && (
-            <motion.div key="login" initial={fade_out} animate={normalize} exit={fade_out} className="space-y-4 mt-4">
-              <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
-                <div>
-                  <Label htmlFor="login-username">Username</Label>
-                  <Input
-                    id="login-username"
-                    {...loginForm.register("username")}
-                    disabled={loginForm.formState.isSubmitting}
-                  />
-                  {loginForm.formState.errors.username && (
-                    <p className="text-sm text-destructive mt-1">{loginForm.formState.errors.username.message}</p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="login-password">Password</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    {...loginForm.register("password")}
-                    disabled={loginForm.formState.isSubmitting}
-                  />
-                  {loginForm.formState.errors.password && (
-                    <p className="text-sm text-destructive mt-1">{loginForm.formState.errors.password.message}</p>
-                  )}
-                </div>
-                <Button type="submit" className="w-full" disabled={loginForm.formState.isSubmitting}>
-                  {loginForm.formState.isSubmitting ? "Logging in..." : "Login"}
-                </Button>
-              </form>
-            </motion.div>
-          )}
-          {activeTab === "register" && (
-            <motion.div key="register" initial={fade_out} animate={normalize} exit={fade_out} className="space-y-4 mt-4 overflow-y-auto max-h-[50vh]">
-              <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+          <AnimatePresence mode="wait">
+            {activeTab === "login" && (
+              <motion.div key="login" initial={fade_out} animate={normalize} exit={fade_out} className="space-y-4 mt-4">
+                <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                   <div>
-                    <Label htmlFor="register-username">Username *</Label>
+                    <Label htmlFor="login-username">Username</Label>
                     <Input
-                      id="register-username"
-                      {...registerForm.register("username")}
-                      disabled={registerForm.formState.isSubmitting}
+                      id="login-username"
+                      {...loginForm.register("username")}
+                      disabled={loginForm.formState.isSubmitting}
                     />
-                    {registerForm.formState.errors.username && (
-                      <p className="text-sm text-destructive mt-1">{registerForm.formState.errors.username.message}</p>
+                    {loginForm.formState.errors.username && (
+                      <p className="text-sm text-destructive mt-1">{loginForm.formState.errors.username.message}</p>
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="register-display-name">Display Name *</Label>
+                    <Label htmlFor="login-password">Password</Label>
                     <Input
-                      id="register-display-name"
-                      {...registerForm.register("displayName")}
-                      disabled={registerForm.formState.isSubmitting}
-                    />
-                    {registerForm.formState.errors.displayName && (
-                      <p className="text-sm text-destructive mt-1">{registerForm.formState.errors.displayName.message}</p>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="register-email">Email *</Label>
-                  <Input
-                    id="register-email"
-                    type="email"
-                    {...registerForm.register("email")}
-                    disabled={registerForm.formState.isSubmitting}
-                  />
-                  {registerForm.formState.errors.email && (
-                    <p className="text-sm text-destructive mt-1">{registerForm.formState.errors.email.message}</p>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="register-password">Password *</Label>
-                    <Input
-                      id="register-password"
+                      id="login-password"
                       type="password"
-                      {...registerForm.register("password")}
+                      {...loginForm.register("password")}
+                      disabled={loginForm.formState.isSubmitting}
+                    />
+                    {loginForm.formState.errors.password && (
+                      <p className="text-sm text-destructive mt-1">{loginForm.formState.errors.password.message}</p>
+                    )}
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loginForm.formState.isSubmitting}>
+                    {loginForm.formState.isSubmitting ? "Logging in..." : "Login"}
+                  </Button>
+                </form>
+              </motion.div>
+            )}
+            {activeTab === "register" && (
+              <motion.div key="register" initial={fade_out} animate={normalize} exit={fade_out} className="space-y-4 mt-4 overflow-y-auto max-h-[50vh]">
+                <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="register-username">Username *</Label>
+                      <Input
+                        id="register-username"
+                        {...registerForm.register("username")}
+                        disabled={registerForm.formState.isSubmitting}
+                      />
+                      {registerForm.formState.errors.username && (
+                        <p className="text-sm text-destructive mt-1">{registerForm.formState.errors.username.message}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="register-display-name">Display Name *</Label>
+                      <Input
+                        id="register-display-name"
+                        {...registerForm.register("displayName")}
+                        disabled={registerForm.formState.isSubmitting}
+                      />
+                      {registerForm.formState.errors.displayName && (
+                        <p className="text-sm text-destructive mt-1">{registerForm.formState.errors.displayName.message}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="register-email">Email *</Label>
+                    <Input
+                      id="register-email"
+                      type="email"
+                      {...registerForm.register("email")}
                       disabled={registerForm.formState.isSubmitting}
                     />
-                    {registerForm.formState.errors.password && (
-                      <p className="text-sm text-destructive mt-1">{registerForm.formState.errors.password.message}</p>
+                    {registerForm.formState.errors.email && (
+                      <p className="text-sm text-destructive mt-1">{registerForm.formState.errors.email.message}</p>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="register-password">Password *</Label>
+                      <Input
+                        id="register-password"
+                        type="password"
+                        {...registerForm.register("password")}
+                        disabled={registerForm.formState.isSubmitting}
+                      />
+                      {registerForm.formState.errors.password && (
+                        <p className="text-sm text-destructive mt-1">{registerForm.formState.errors.password.message}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="register-confirm-password">Confirm Password *</Label>
+                      <Input
+                        id="register-confirm-password"
+                        type="password"
+                        {...registerForm.register("confirmPassword")}
+                        disabled={registerForm.formState.isSubmitting}
+                      />
+                      {registerForm.formState.errors.confirmPassword && (
+                        <p className="text-sm text-destructive mt-1">
+                          {registerForm.formState.errors.confirmPassword.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="register-avatar">Avatar (optional)</Label>
+                    <input
+                      id="register-avatar"
+                      type="file"
+                      accept="image/*"
+                      disabled={registerForm.formState.isSubmitting}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="register-bio">Bio</Label>
+                    <Textarea
+                      id="register-bio"
+                      {...registerForm.register("bio")}
+                      placeholder="Optional"
+                      className="min-h-[80px]"
+                      disabled={registerForm.formState.isSubmitting}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={registerForm.formState.isSubmitting}>
+                    {registerForm.formState.isSubmitting ? "Creating account..." : "Register"}
+                  </Button>
+                </form>
+              </motion.div>
+            )}
+            {activeTab === "forgot" && (
+              <motion.div key="forgot" initial={fade_out} animate={normalize} exit={fade_out} className="space-y-4 mt-4">
+                <form onSubmit={forgotForm.handleSubmit(handleForgotPassword)} className="space-y-4">
+                  <div>
+                    <Label htmlFor="forgot-username">Username</Label>
+                    <Input
+                      id="forgot-username"
+                      {...forgotForm.register("username")}
+                      disabled={forgotForm.formState.isSubmitting}
+                    />
+                    {forgotForm.formState.errors.username && (
+                      <p className="text-sm text-destructive mt-1">{forgotForm.formState.errors.username.message}</p>
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="register-confirm-password">Confirm Password *</Label>
+                    <Label htmlFor="forgot-email">Email</Label>
                     <Input
-                      id="register-confirm-password"
-                      type="password"
-                      {...registerForm.register("confirmPassword")}
-                      disabled={registerForm.formState.isSubmitting}
+                      id="forgot-email"
+                      type="email"
+                      {...forgotForm.register("email")}
+                      disabled={forgotForm.formState.isSubmitting}
                     />
-                    {registerForm.formState.errors.confirmPassword && (
-                      <p className="text-sm text-destructive mt-1">
-                        {registerForm.formState.errors.confirmPassword.message}
-                      </p>
+                    {forgotForm.formState.errors.email && (
+                      <p className="text-sm text-destructive mt-1">{forgotForm.formState.errors.email.message}</p>
                     )}
                   </div>
-                </div>
-                <div>
-                  <Label htmlFor="register-avatar">Avatar (optional)</Label>
-                  <input
-                    id="register-avatar"
-                    type="file"
-                    accept="image/*"
-                    disabled={registerForm.formState.isSubmitting}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="register-bio">Bio</Label>
-                  <Textarea
-                    id="register-bio"
-                    {...registerForm.register("bio")}
-                    placeholder="Optional"
-                    className="min-h-[80px]"
-                    disabled={registerForm.formState.isSubmitting}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={registerForm.formState.isSubmitting}>
-                  {registerForm.formState.isSubmitting ? "Creating account..." : "Register"}
-                </Button>
-              </form>
-            </motion.div>
-          )}
-          {activeTab === "forgot" && (
-            <motion.div key="forgot" initial={fade_out} animate={normalize} exit={fade_out} className="space-y-4 mt-4">
-              <form onSubmit={forgotForm.handleSubmit(handleForgotPassword)} className="space-y-4">
-                <div>
-                  <Label htmlFor="forgot-username">Username</Label>
-                  <Input
-                    id="forgot-username"
-                    {...forgotForm.register("username")}
-                    disabled={forgotForm.formState.isSubmitting}
-                  />
-                  {forgotForm.formState.errors.username && (
-                    <p className="text-sm text-destructive mt-1">{forgotForm.formState.errors.username.message}</p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="forgot-email">Email</Label>
-                  <Input
-                    id="forgot-email"
-                    type="email"
-                    {...forgotForm.register("email")}
-                    disabled={forgotForm.formState.isSubmitting}
-                  />
-                  {forgotForm.formState.errors.email && (
-                    <p className="text-sm text-destructive mt-1">{forgotForm.formState.errors.email.message}</p>
-                  )}
-                </div>
-                <Button type="submit" className="w-full" disabled={forgotForm.formState.isSubmitting}>
-                  {forgotForm.formState.isSubmitting ? "Sending..." : "Send Reset Link"}
-                </Button>
-              </form>
-            </motion.div>
+                  <Button type="submit" className="w-full" disabled={forgotForm.formState.isSubmitting}>
+                    {forgotForm.formState.isSubmitting ? "Sending..." : "Send Reset Link"}
+                  </Button>
+                </form>
+              </motion.div>
 
-          )}
+            )}
+          </AnimatePresence>
         </Tabs>
       </DialogContent>
     </Dialog>

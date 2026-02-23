@@ -39,7 +39,11 @@ class WalletViewSet(viewsets.ViewSet):
             address = DepositAddress.objects.get(user_id=user_id)
         except DepositAddress.DoesNotExist:
             wallet_service.get_or_create_wallet(user_id)
-            address = DepositAddress.objects.get(user_id=user_id)
+            try:
+                address = DepositAddress.objects.get(user_id=user_id)
+            except DepositAddress.DoesNotExist:
+                wallet_service.generate_deposit_address(user_id)
+                address = DepositAddress.objects.get(user_id=user_id)
         serializer = DepositAddressSerializer(address)
         return Response(serializer.data)
 
