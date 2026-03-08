@@ -41,7 +41,9 @@ export function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { currentListing, loading, error, fetchListing } = useListingStore();
   const dogeRate = useDogeRateStore((s) => s.rate);
-  const [currentMedia, setCurrentMedia] = useState<{ url: string; type: "image" | "video" }>({ url: id ? `${PLACEHOLDER_IMG}?id=${id}` : PLACEHOLDER_IMG, type: "image" });
+  const [placeholderUuid] = useState(() => crypto.randomUUID());
+  const placeholderUrl = `${PLACEHOLDER_IMG}?id=${placeholderUuid}`;
+  const [currentMedia, setCurrentMedia] = useState<{ url: string; type: "image" | "video" }>({ url: placeholderUrl, type: "image" });
   const [questions, setQuestions] = useState<ListingQuestion[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
   const [questionBody, setQuestionBody] = useState("");
@@ -80,7 +82,6 @@ export function ListingDetailPage() {
   }, [currentListing?.seller_id]);
 
   useEffect(() => {
-    const placeholderUrl = id ? `${PLACEHOLDER_IMG}?id=${id}` : PLACEHOLDER_IMG;
     if (currentListing?.images?.length) {
       const first = currentListing.images[0];
       const url = first.url_large || first.url_medium || first.url_thumb || placeholderUrl;
@@ -89,7 +90,7 @@ export function ListingDetailPage() {
     } else if (currentListing) {
       setCurrentMedia({ url: placeholderUrl, type: "image" });
     }
-  }, [currentListing, id]);
+  }, [currentListing, placeholderUrl]);
 
   if (loading) return <div className="container py-20 text-center"></div>;
   if (error) return <div className="container py-20 text-center text-destructive">{error}</div>;
@@ -111,7 +112,7 @@ export function ListingDetailPage() {
           {listing.images && listing.images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto">
               {listing.images.map((img, idx) => {
-                const url = img.url_large || img.url_medium || img.url_thumb || `${PLACEHOLDER_IMG}?id=${id}-${img.id ?? idx}`;
+                const url = img.url_large || img.url_medium || img.url_thumb || `${PLACEHOLDER_IMG}?id=${placeholderUuid}-${idx}`;
                 const isVideo = (img as { media_type?: string }).media_type === "video";
                 return (
                   <button
@@ -143,7 +144,7 @@ export function ListingDetailPage() {
               <p className="text-sm text-muted-foreground mb-2">Seller</p>
               <Link to={`/users/${seller.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={seller.avatar_url ?? undefined} alt="" />
+                  <AvatarImage src={seller.avatar_url ?? `${PLACEHOLDER_IMG}?id=${seller.id}`} alt="" />
                   <AvatarFallback>{(seller.display_name || seller.username || "?")[0]}</AvatarFallback>
                 </Avatar>
                 <span className="font-medium">{seller.display_name || seller.username}</span>

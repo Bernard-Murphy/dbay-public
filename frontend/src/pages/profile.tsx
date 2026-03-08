@@ -7,6 +7,8 @@ import { api } from "@/services/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 
+const PLACEHOLDER_IMG = "https://feednana.com/random";
+
 export function ProfilePage() {
   const { user, isAuthenticated, setUser } = useAuthStore();
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -69,7 +71,11 @@ export function ProfilePage() {
     );
   }
 
-  const avatarSrc = avatarPreview ?? avatarUrl?.trim() ?? (displayUser && "avatarUrl" in displayUser ? displayUser.avatarUrl : (displayUser as { avatar_url?: string })?.avatar_url);
+  const avatarSrc =
+    avatarPreview ??
+    avatarUrl?.trim() ??
+    (displayUser && "avatarUrl" in displayUser ? displayUser.avatarUrl : (displayUser as { avatar_url?: string })?.avatar_url) ??
+    (user?.id ? `${PLACEHOLDER_IMG}?id=${user.id}` : undefined);
 
   return (
     <div className="container max-w-md mx-auto px-4 py-8">

@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthStore } from "@/stores/auth-store";
 import { useTheme } from "@/components/theme/theme-provider";
 import { AuthDialog } from "@/components/auth/auth-dialog";
@@ -88,6 +88,10 @@ export function Navbar() {
                   <DropdownMenuTrigger asChild className="static">
                     <Button variant="ghost" className="h-10 w-10 rounded-full">
                       <Avatar className="h-10 w-10">
+                        <AvatarImage
+                          src={user.avatarUrl ?? (user.id ? `https://feednana.com/random?id=${user.id}` : undefined)}
+                          alt=""
+                        />
                         <AvatarFallback className="bg-primary text-primary-foreground">
                           {(user.username || user.displayName || "U").charAt(0).toUpperCase()}
                         </AvatarFallback>

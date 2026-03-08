@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { BadgeCheck } from "lucide-react";
 
+const PLACEHOLDER_IMG = "https://feednana.com/random";
+
 interface PublicUser {
   id: string;
   username: string;
@@ -43,7 +45,7 @@ export function UserProfilePage() {
       <div className="rounded-lg border bg-card p-6 space-y-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-20 w-20">
-            <AvatarImage src={user.avatar_url ?? undefined} alt="" />
+            <AvatarImage src={user.avatar_url ?? `${PLACEHOLDER_IMG}?id=${user.id}`} alt="" />
             <AvatarFallback className="text-2xl">{(user.display_name || user.username || "?")[0]}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
